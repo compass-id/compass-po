@@ -1,5 +1,5 @@
 <?php
-// view_catalog.php - FULL FEATURES: API + DB, SCROLL, SEARCH, LABELS
+// view_catalog.php - FIXED: Header Cart Button Removed
 $pdo = getDB();
 $is_logged_in = isset($_SESSION['user_id']);
 
@@ -8,7 +8,7 @@ $localBooks = $pdo->query("SELECT * FROM books ORDER BY title ASC")->fetchAll(PD
 
 // 2. Fetch External API Books (Rallyz)
 $apiBooks = [];
-$apiUrl = "https://api452.rallyz.co.kr/api/savewon/goods";
+$apiUrl = "https://api452.rallyz.co.kr/api/savewon/goods?size=2000&limit=2000"; 
 $exchangeRate = 12; // 1 KRW = 12 IDR
 
 $ch = curl_init();
@@ -16,11 +16,16 @@ curl_setopt($ch, CURLOPT_URL, $apiUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 $response = curl_exec($ch);
-// curl_close($ch); // Deprecated in PHP 8+, handled automatically
+
+$api_true_total = 0;
 
 if ($response) {
     $json = json_decode($response, true);
     if (isset($json['Success']) && $json['Success'] == true && !empty($json['Data'])) {
+        
+        // Grab the true total count from the API metadata
+        $api_true_total = isset($json['Count']) ? $json['Count'] : count($json['Data']);
+        
         foreach ($json['Data'] as $item) {
             $apiBooks[] = [
                 'id' => 'ext_' . $item['GDS_ID'], 
@@ -28,7 +33,7 @@ if ($response) {
                 'isbn' => $item['PB_ISBN'],
                 'category' => $item['PB_PUBLISHER'] ?: 'Imported',
                 'base_price' => $item['GDS_PRICE'] * $exchangeRate,
-                'cover_image' => 'https://8izg4bob10557.edge.naverncp.com/' . $item['THUMB_URL'],
+                'cover_image' => 'https://api452.rallyz.co.kr/' . $item['THUMB_URL'],
                 'stock' => 999,
                 'is_external' => true 
             ];
@@ -36,12 +41,12 @@ if ($response) {
     }
 }
 
-// 3. Merge & Count
+// 3. Merge & Count (Displaying True Count including API metadata)
 $allBooks = array_merge($localBooks, $apiBooks);
-$total_count = count($allBooks);
+$total_count = count($localBooks) + $api_true_total; 
 
-// 4. Cart Count (Fixed Immediate Display)
-$cart_count = isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0;
+// 4. Cart Count (Unique Items Count)
+$cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
 // Fetch Global Settings
 $eb_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'early_bird_deadline'");
@@ -95,15 +100,6 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
         gap: 20px; 
     }
-    /* Infinite Scroll Loading Text */
-    #loading-trigger {
-        text-align: center;
-        padding: 20px;
-        color: #888;
-        font-style: italic;
-        display: none;
-        grid-column: 1 / -1;
-    }
 </style>
 
 <div class="container" style="padding: 40px 20px;">
@@ -112,12 +108,7 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
             <h2 style="margin: 0;">Book Catalog</h2>
             <small style="color: #666;"><?php echo number_format($total_count); ?> books available</small>
         </div>
-        <?php if ($is_logged_in): ?>
-        <a href="?page=cart" class="btn btn-outline" style="display:flex; align-items:center; gap:5px;">
-            <ion-icon name="cart"></ion-icon> Cart (<?php echo $cart_count; ?>)
-        </a>
-        <?php endif; ?>
-    </div>
+        </div>
 
     <div class="catalog-toolbar">
         <div class="search-box">
@@ -145,7 +136,7 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
             $b_json = htmlspecialchars(json_encode($b) ?: '{}', ENT_QUOTES, 'UTF-8');
         ?>
         <div class="card product-card" 
-             data-id="<?php echo $b_id; ?>" 
+             data-id="<?php echo htmlspecialchars($b_id); ?>" 
              data-title="<?php echo strtolower(htmlspecialchars($b_title)); ?>"
              data-isbn="<?php echo htmlspecialchars($b_isbn); ?>"
              data-category="<?php echo strtolower(htmlspecialchars($b_cat)); ?>"
@@ -153,6 +144,12 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
              style="padding: 15px; display: none; flex-direction: column; position: relative;"> <div style="position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; z-index: 10;">
                 <?php if ($is_early_bird_active): ?>
                     <span style="background: #007AFF; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">EARLY BIRD</span>
+                <?php endif; ?>
+                
+                <?php if ($is_ext): ?>
+                    <span style="background: #34C759; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">IMPORT</span>
+                <?php else: ?>
+                    <span style="background: #FF9500; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">LOCAL</span>
                 <?php endif; ?>
             </div>
 
@@ -191,30 +188,41 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
                 <?php endif; ?>
             </div>
             
-            <div style="margin-top: 15px;">
+            <div style="margin-top: 15px;" id="cart-ui-<?php echo htmlspecialchars($b_id); ?>">
                 <?php if ($is_logged_in): 
-                    $inCart = isset($_SESSION['cart'][$b_id]) ? $_SESSION['cart'][$b_id] : 0;
+                    $inCart = isset($_SESSION['cart'][$b_id]) ? (int)$_SESSION['cart'][$b_id] : 0;
                 ?>
-                    <?php if ($inCart == 0): ?>
-                        <form method="POST" onsubmit="return addToCart(event)" style="margin:0;">
+                    <?php if ($inCart <= 0): ?>
+                        <form method="POST" onsubmit="return handleCartAjax(event, '<?php echo htmlspecialchars($b_id); ?>', 'add_to_cart', 1)" style="margin:0;">
                             <input type="hidden" name="action" value="add_to_cart">
-                            <input type="hidden" name="book_id" value="<?php echo $b_id; ?>">
-                            <button type="submit" class="btn btn-add" style="width: 100%;">+ Add</button>
+                            <input type="hidden" name="book_id" value="<?php echo htmlspecialchars($b_id); ?>">
+                            <button type="submit" class="btn" style="width: 100%;">+ Add</button>
                         </form>
                     <?php else: ?>
-                        <div class="qty-control" style="display: flex; align-items: center; justify-content: center; gap: 10px; background: #eee; color: #333; padding: 8px; border-radius: 6px;">
-                            <a class="btn" style="width: 100%; background: #eee; color: #333;">Added to Cart</a>
+                        <div class="qty-control" style="display: flex; align-items: center; justify-content: center; gap: 10px; background: #f5f5f7; padding: 8px; border-radius: 6px;">
+                            <form method="POST" onsubmit="return handleCartAjax(event, '<?php echo htmlspecialchars($b_id); ?>', 'update_cart', -1)" style="margin:0;">
+                                <input type="hidden" name="action" value="update_cart">
+                                <input type="hidden" name="book_id" value="<?php echo htmlspecialchars($b_id); ?>">
+                                <input type="hidden" name="delta" value="-1">
+                                <button type="submit" class="qty-btn" style="border:none; background:none; cursor:pointer; font-size:16px;">−</button>
+                            </form>
+                            <span style="font-weight:600;"><?php echo $inCart; ?></span>
+                            <form method="POST" onsubmit="return handleCartAjax(event, '<?php echo htmlspecialchars($b_id); ?>', 'update_cart', 1)" style="margin:0;">
+                                <input type="hidden" name="action" value="update_cart">
+                                <input type="hidden" name="book_id" value="<?php echo htmlspecialchars($b_id); ?>">
+                                <input type="hidden" name="delta" value="1">
+                                <button type="submit" class="qty-btn" style="border:none; background:none; cursor:pointer; font-size:16px;">+</button>
+                            </form>
                         </div>
                     <?php endif; ?>
                 <?php else: ?>
-                    <a href="?page=login" class="btn" style="width: 100%; background: #eee; color: #333;">Login</a>
+                    <a href="?page=login" class="btn" style="width: 100%; background: #eee; color: #333; text-align: center; display:block;">Login to Add</a>
                 <?php endif; ?>
             </div>
+
         </div>
         <?php endforeach; ?>
     </div>
-    
-    <div id="loading-trigger">Loading more items...</div>
 </div>
 
 <div id="book-modal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
@@ -240,20 +248,86 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
 </div>
 
 <script>
-// --- INFINITE SCROLL LOGIC ---
-let visibleLimit = 10; // Start with 12 items
-const increment = 10;  // Load 12 more on scroll
+// --- 1. DYNAMIC AJAX CART LOGIC (No Reloads) ---
+let currentCartCount = <?php echo $cart_count; ?>;
+
+function renderCartControls(bookId, qty) {
+    if (qty <= 0) {
+        return `
+            <form method="POST" onsubmit="return handleCartAjax(event, '${bookId}', 'add_to_cart', 1)" style="margin:0;">
+                <input type="hidden" name="action" value="add_to_cart">
+                <input type="hidden" name="book_id" value="${bookId}">
+                <button type="submit" class="btn" style="width: 100%;">+ Add</button>
+            </form>
+        `;
+    } else {
+        return `
+            <div class="qty-control" style="display: flex; align-items: center; justify-content: center; gap: 10px; background: #f5f5f7; padding: 8px; border-radius: 6px;">
+                <form method="POST" onsubmit="return handleCartAjax(event, '${bookId}', 'update_cart', -1)" style="margin:0;">
+                    <input type="hidden" name="action" value="update_cart">
+                    <input type="hidden" name="book_id" value="${bookId}">
+                    <input type="hidden" name="delta" value="-1">
+                    <button type="submit" class="qty-btn" style="border:none; background:none; cursor:pointer; font-size:16px;">−</button>
+                </form>
+                <span style="font-weight:600;">${qty}</span>
+                <form method="POST" onsubmit="return handleCartAjax(event, '${bookId}', 'update_cart', 1)" style="margin:0;">
+                    <input type="hidden" name="action" value="update_cart">
+                    <input type="hidden" name="book_id" value="${bookId}">
+                    <input type="hidden" name="delta" value="1">
+                    <button type="submit" class="qty-btn" style="border:none; background:none; cursor:pointer; font-size:16px;">+</button>
+                </form>
+            </div>
+        `;
+    }
+}
+
+function handleCartAjax(event, bookId, action, delta) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    // 1. Optimistic UI Update
+    const container = document.getElementById('cart-ui-' + bookId);
+    let currentQtySpan = container.querySelector('span');
+    let qty = currentQtySpan ? parseInt(currentQtySpan.innerText) : 0;
+    let oldQty = qty;
+    
+    if (action === 'add_to_cart') qty = 1;
+    else if (action === 'update_cart') qty += delta;
+    if (qty < 0) qty = 0;
+
+    // 2. Update Total Item Counter Dynamically
+    if (oldQty === 0 && qty > 0) currentCartCount++;
+    else if (oldQty > 0 && qty === 0) currentCartCount--;
+
+    // Update FAB (Floating Action Button) Number & Visibility
+    const fabCartBtn = document.getElementById('fab-cart-btn');
+    const fabCartCountEl = document.getElementById('fab-cart-count');
+    if (fabCartBtn && fabCartCountEl) {
+        fabCartCountEl.innerText = currentCartCount;
+        fabCartBtn.style.display = currentCartCount > 0 ? 'flex' : 'none';
+    }
+
+    // 3. Re-render individual card buttons instantly
+    container.innerHTML = renderCartControls(bookId, qty);
+
+    // 4. Send actual request to backend silently
+    fetch('?page=cart&ajax=1', { method: 'POST', body: formData }).catch(err => console.error(err));
+    return false;
+}
+
+// --- 2. INFINITE SCROLL LOGIC ---
+let visibleLimit = 12; 
+const increment = 12;  
 let isSearchActive = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    renderBooks(); // Initial render
+    renderBooks(); 
     window.addEventListener('scroll', handleScroll);
 });
 
 function handleScroll() {
-    if (isSearchActive) return; // Disable scroll loading during search
-    
-    // Check if scrolled near bottom (buffer of 500px)
+    if (isSearchActive) return; 
+    // Trigger load slightly before hitting bottom
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
         visibleLimit += increment;
         renderBooks();
@@ -262,30 +336,14 @@ function handleScroll() {
 
 function renderBooks() {
     const cards = Array.from(document.querySelectorAll('.product-card'));
-    let hiddenCount = 0;
-    
     cards.forEach((card, index) => {
         if (!isSearchActive) {
-            if (index < visibleLimit) {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = 'none';
-                hiddenCount++;
-            }
+            card.style.display = (index < visibleLimit) ? 'flex' : 'none';
         }
     });
-    
-    // Show/Hide Loading Text
-    const loader = document.getElementById('loading-trigger');
-    if (hiddenCount > 0 && !isSearchActive) {
-        loader.style.display = 'block';
-    } else {
-        loader.style.display = 'none';
-    }
 }
 
-// --- STANDARD FEATURES ---
-
+// --- 3. STANDARD FEATURES ---
 function showBookDetails(book) {
     document.getElementById('modal-img').src = book.cover_image || 'https://via.placeholder.com/150';
     document.getElementById('modal-title').innerText = book.title || 'Untitled';
@@ -294,42 +352,24 @@ function showBookDetails(book) {
     document.getElementById('book-modal').style.display = 'flex';
 }
 
-function addToCart(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    fetch('?page=cart&ajax=1', { method: 'POST', body: formData })
-    .then(() => window.location.reload())
-    .catch(err => console.error(err));
-    return false;
-}
-
-// Filter Logic (Restored)
 function filterCatalog() {
     const input = document.getElementById('catalog-search').value.toLowerCase();
     const cards = document.querySelectorAll('.product-card');
     
     if (input.length > 0) {
         isSearchActive = true;
-        document.getElementById('loading-trigger').style.display = 'none';
-        
         cards.forEach(card => {
             const title = card.getAttribute('data-title');
             const isbn = card.getAttribute('data-isbn').toLowerCase();
             const cat = card.getAttribute('data-category').toLowerCase();
-            
-            if (title.includes(input) || isbn.includes(input) || cat.includes(input)) {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = 'none';
-            }
+            card.style.display = (title.includes(input) || isbn.includes(input) || cat.includes(input)) ? 'flex' : 'none';
         });
     } else {
         isSearchActive = false;
-        renderBooks(); // Reset to scroll view
+        renderBooks();
     }
 }
 
-// Sort Logic (Restored)
 function sortCatalog() {
     const sortVal = document.getElementById('catalog-sort').value;
     const grid = document.getElementById('book-grid');
@@ -344,9 +384,4 @@ function sortCatalog() {
     cards.forEach(card => grid.appendChild(card));
     if (!isSearchActive) renderBooks();
 }
-
-// Init Cart Count
-fetch('?page=cart&ajax=get_count').then(r=>r.text()).then(c=>{
-    if(document.getElementById('header-cart-count')) document.getElementById('header-cart-count').innerText=c;
-});
 </script>

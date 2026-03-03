@@ -1,5 +1,5 @@
 <?php
-// index.php - FIXED MOBILE MENUS & ADDED NEW ADMIN ROUTES
+// index.php - FIXED MOBILE MENUS & ADDED NEW ADMIN ROUTES & FAB
 session_start();
 require_once 'config.php';
 require_once 'security.php';
@@ -283,24 +283,39 @@ switch ($page) {
 
 <script src="app.js"></script>
 <script>
-// Toggle Dashboard Sidebar
 function toggleSidebar() {
     const sb = document.getElementById('app-sidebar');
     const ov = document.getElementById('sidebar-overlay');
     if(sb) sb.classList.toggle('active');
     if(ov) ov.classList.toggle('active');
 }
-
-// Toggle Landing Page Mobile Menu
 function toggleLandingMenu() {
     const menu = document.getElementById('landing-mobile-menu');
     if(menu) menu.classList.toggle('active');
 }
 </script>
 
-<?php if($is_landing || $page === 'catalog'): ?>
-    <a href="?page=cart" class="floating-cart-btn">
-        <ion-icon name="cart"></ion-icon>
+<?php if ($page === 'catalog'): ?>
+    <?php $fab_cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0; ?>
+    <a href="?page=cart" id="fab-cart-btn" style="
+        display: <?php echo $fab_cart_count > 0 ? 'flex' : 'none'; ?>; 
+        position: fixed; 
+        bottom: 30px; 
+        right: 30px; 
+        background: #007AFF; 
+        color: white; 
+        padding: 15px 25px; 
+        border-radius: 30px; 
+        align-items: center; 
+        gap: 10px; 
+        font-weight: bold; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+        text-decoration: none; 
+        z-index: 1000; 
+        font-size:14px;
+        transition: transform 0.2s;">
+        <ion-icon name="cart" style="font-size:22px;"></ion-icon>
+        <span><span id="fab-cart-count"><?php echo $fab_cart_count; ?></span> Books in Cart</span>
     </a>
 <?php endif; ?>
 

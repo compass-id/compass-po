@@ -106,6 +106,7 @@ foreach ($orders as $o) {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
             <button onclick="document.getElementById('edit-profile-modal').style.display='flex'" class="btn btn-sm" style="background:#f5f5f7; color:#333;">Edit Profile</button>
             <a href="?page=profile_settings" class="btn btn-sm" style="background:#f5f5f7; color:#333;">Address Book</a>
+            <a href="?page=support" class="btn btn-sm" style="background:#f5f5f7; color:#333;">Customer Care</a>
             <a href="logout.php" class="btn btn-sm" style="background:#ffebee; color:#d32f2f;">Sign Out</a>
         </div>
     </div>
@@ -258,36 +259,6 @@ foreach ($orders as $o) {
                 </tbody>
             </table>
         </div>
-    <?php endif; ?>
-</div>
-
-<div class="card" style="margin-top:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>My Support Tickets</h3>
-        <a href="?page=support" class="btn btn-sm">New Ticket</a>
-    </div>
-    
-    <?php if(count($tickets) > 0): ?>
-    <div class="responsive-table">
-        <table style="width:100%; margin-top:15px; font-size:14px;">
-            <tr style="background:#f9f9f9; color:#666; text-align:left;">
-                <th style="padding:10px;">Subject</th>
-                <th>Status</th>
-                <th>Date</th>
-            </tr>
-            <?php foreach($tickets as $t): ?>
-            <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:12px;"><?php echo htmlspecialchars($t['subject']); ?></td>
-                <td>
-                    <span style="background:<?php echo $t['status']=='open'?'#e3f2fd':'#eee'; ?>; color:<?php echo $t['status']=='open'?'#1976d2':'#555'; ?>; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">
-                        <?php echo strtoupper($t['status']); ?>
-                    </span>
-                </td>
-                <td style="color:#888;"><?php echo date('d M', strtotime($t['created_at'])); ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </table>
-    </div>
     <?php endif; ?>
 </div>
 

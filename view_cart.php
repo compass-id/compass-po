@@ -319,15 +319,19 @@ if ($next_tier) {
                     </td>
                     <td style="padding:15px;">
                         <strong><?php echo htmlspecialchars($item['title'] ?? 'Unknown'); ?></strong>
-                        <div style="color: #666;">
-                            Rp <?php echo number_format($item['active_price']); ?>
+                        
+                        <div style="color: #666; margin-top: 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;">
+                            <span>Rp <?php echo number_format($item['active_price']); ?></span>
+                            
                             <?php if($item['is_eb']): ?>
-                                <span style="font-size:10px; background:#d32f2f; color:white; padding:2px 6px; border-radius:4px;">EARLY BIRD</span>
+                                <span style="font-size:10px; background:#d32f2f; color:white; padding:3px 6px; border-radius:4px; display:inline-block; white-space:nowrap;">EARLY BIRD</span>
                             <?php endif; ?>
+                            
                             <?php if($item['is_external']): ?>
-                                <span style="font-size:10px; background:#34C759; color:white; padding:2px 6px; border-radius:4px;">IMPORT</span>
+                                <span style="font-size:10px; background:#34C759; color:white; padding:3px 6px; border-radius:4px; display:inline-block; white-space:nowrap;">IMPORT</span>
                             <?php endif; ?>
                         </div>
+
                     </td>
                     <td style="padding:15px;">
                         <div style="display:flex; align-items:center; background:#f5f5f7; border-radius:6px; border:1px solid #eee; width: fit-content;">
