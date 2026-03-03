@@ -12,6 +12,12 @@ set_exception_handler(function($e) {
 });
 
 $pdo = getDB();
+
+// Database Auto-Patch: Ensure is_approved column exists (Defaults to 1 for existing users)
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved TINYINT(1) DEFAULT 1");
+} catch (PDOException $e) { /* Ignore if it already exists or MariaDB version differs */ }
+
 // Handle both JSON body (for JS fetch) and POST vars (for Forms)
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 $action = $_GET['action'] ?? '';
@@ -34,26 +40,20 @@ try {
     }
 
     // ====================================================
-    // 2. INTEREST FORM SUBMISSION (Updated for Split Contacts)
+    // 2. INTEREST FORM SUBMISSION
     // ====================================================
 
     if ($action === 'submit_form') {
-        // Insert into interest_forms with separated Email and Phone
         $stmt = $pdo->prepare("INSERT INTO interest_forms 
             (school_name, participant_name, email, phone, position, city, student_count, visit_consent, interest_level, programs) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             
         $stmt->execute([
-            clean_input($_POST['school_name']), 
-            clean_input($_POST['participant_name']), 
-            clean_input($_POST['email']), 
-            clean_input($_POST['phone']), 
-            clean_input($_POST['position']), 
-            clean_input($_POST['city']), 
-            (int)$_POST['student_count'],
-            clean_input($_POST['visit_consent']),
-            clean_input($_POST['interest_level']),
-            json_encode($_POST['programs'] ?? [])
+            clean_input($_POST['school_name']), clean_input($_POST['participant_name']), 
+            clean_input($_POST['email']), clean_input($_POST['phone']), 
+            clean_input($_POST['position']), clean_input($_POST['city']), 
+            (int)$_POST['student_count'], clean_input($_POST['visit_consent']),
+            clean_input($_POST['interest_level']), json_encode($_POST['programs'] ?? [])
         ]);
         
         header("Location: index.php?page=form&msg=success");
@@ -74,6 +74,11 @@ try {
         if ($user && password_verify($input['password'], $user['password'])) {
             if ($user['is_banned'] == 1) throw new Exception("Account Suspended. Contact Support.");
             
+            // Check if account is approved
+            if (isset($user['is_approved']) && $user['is_approved'] == 0) {
+                throw new Exception("Account pending admin approval. Please wait.");
+            }
+            
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['name'] = $user['name'];
@@ -87,7 +92,6 @@ try {
     }
 
     if ($action === 'register') {
-        // Validate
         if (empty($input['name']) || empty($input['email']) || empty($input['password'])) throw new Exception("Please fill all required fields.");
         
         $email = clean_input($input['email']);
@@ -97,8 +101,8 @@ try {
         
         $pass = password_hash($input['password'], PASSWORD_DEFAULT);
         
-        // Insert New User (Including Institution, Position, City)
-        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, position, institution, city, phone, address) VALUES (?, ?, ?, 'public', ?, ?, ?, NULL, NULL)");
+        // Insert New User (Set is_approved = 0)
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, position, institution, city, phone, is_approved) VALUES (?, ?, ?, 'public', ?, ?, ?, ?, 0)");
         
         $stmt->execute([
             clean_input($input['name']), 
@@ -106,7 +110,8 @@ try {
             $pass,
             clean_input($input['position'] ?? ''), 
             clean_input($input['institution'] ?? ''), 
-            clean_input($input['city'] ?? '')
+            clean_input($input['city'] ?? ''),
+            clean_input($input['phone'] ?? '')
         ]);
         
         echo json_encode(['status' => 'success']);
@@ -119,13 +124,10 @@ try {
 
     if ($action === 'add_address') {
         if (!isset($_SESSION['user_id'])) throw new Exception("Login required");
-        
-        // If set as default, unset others
         if (!empty($input['is_default'])) {
             $pdo->prepare("UPDATE user_addresses SET is_default=0 WHERE user_id=?")->execute([$_SESSION['user_id']]);
         }
-        
-        $stmt = $pdo->prepare("INSERT pro INTO user_addresses (user_id, label, recipient_name, phone, address_line, city, postal_code, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO user_addresses (user_id, label, recipient_name, phone, address_line, city, postal_code, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $_SESSION['user_id'], clean_input($input['label']), clean_input($input['recipient']), 
             clean_input($input['phone']), clean_input($input['address']), clean_input($input['city']), 
@@ -143,20 +145,18 @@ try {
     }
 
     // ====================================================
-    // 5. ORDER PLACEMENT (Pre-Order Logic)
+    // 5. ORDER PLACEMENT
     // ====================================================
 
     if ($action === 'place_order') {
         if (!isset($_SESSION['user_id'])) throw new Exception("Login required");
         
-        // 1. Get Selected Address
         $addrId = (int)($input['address_id'] ?? 0);
         $addrStmt = $pdo->prepare("SELECT * FROM user_addresses WHERE id = ? AND user_id = ?");
         $addrStmt->execute([$addrId, $_SESSION['user_id']]);
         $addr = $addrStmt->fetch();
         if (!$addr) throw new Exception("Invalid Shipping Address. Please add one in settings.");
         
-        // 2. Load Business Rules
         $s = get_sys_settings($pdo);
         $moq2 = (int)($s['moq_tier_2'] ?? 20);
         $moq3 = (int)($s['moq_tier_3'] ?? 200);
@@ -164,13 +164,11 @@ try {
         $disc3 = (float)($s['discount_tier_3'] ?? 20) / 100;
         $deadline = $s['early_bird_deadline'] ?? '2026-04-30';
         
-        // 3. Process Cart
         $cart = $input['cart'] ?? [];
         if (empty($cart)) throw new Exception("Cart is empty");
 
         $totalQty = 0; foreach ($cart as $i) $totalQty += (int)$i['qty'];
         
-        // 4. Calculate Tier & Discount
         $tier = 1; $discount = 0;
         if ($totalQty >= $moq3) { $tier = 3; $discount = $disc3; }
         elseif ($totalQty >= $moq2) { $tier = 2; $discount = $disc2; }
@@ -180,15 +178,13 @@ try {
 
         $pdo->beginTransaction();
         
-        // 5. Create Order (With Address Snapshot)
         $snapshot = json_encode($addr);
         $stmt = $pdo->prepare("INSERT INTO orders (user_id, shipping_city, shipping_snapshot, total_amount, paid_amount, status, payment_status, shipment_status, tier_level, is_early_bird) VALUES (?, ?, ?, 0, 0, 'pending', 'unpaid', 'processing', ?, ?)");
         $stmt->execute([$_SESSION['user_id'], $addr['city'], $snapshot, $tier, $is_early]);
         $orderId = $pdo->lastInsertId();
 
-        // 6. Create Order Items
         $grandTotal = 0;
-        $itemStmt = $pdo->prepare("INSERT order_items (order_id, book_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)");
+        $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, book_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)");
         
         foreach ($cart as $item) {
             $b = $pdo->prepare("SELECT base_price FROM books WHERE id = ?");
@@ -213,7 +209,6 @@ try {
     // 6. PAYMENTS & LOGISTICS
     // ====================================================
 
-    // User Uploads Payment Proof
     if ($action === 'upload_payment' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!isset($_SESSION['user_id'])) throw new Exception("Login required");
         $oid = $_POST['order_id'];
@@ -231,7 +226,6 @@ try {
         } throw new Exception("Upload failed");
     }
 
-    // User Confirms Arrival
     if ($action === 'confirm_arrival' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!isset($_SESSION['user_id'])) throw new Exception("Login required");
         $oid = $_POST['order_id'];
@@ -250,7 +244,7 @@ try {
     // 7. ADMIN MANAGEMENT
     // ====================================================
 
-    if (in_array($action, ['add_book', 'edit_book', 'delete_book', 'update_settings', 'ban_user', 'verify_payment', 'update_shipment'])) {
+    if (in_array($action, ['add_book', 'edit_book', 'delete_book', 'update_settings', 'ban_user', 'approve_user', 'verify_payment', 'update_shipment'])) {
         if (($_SESSION['role'] ?? '') !== 'admin') throw new Exception("Access Denied");
 
         // Book Management
@@ -266,9 +260,12 @@ try {
             $stmt->execute([clean_input($input['title']), clean_input($input['isbn']), clean_input($input['category']), (float)$input['price'], (int)$input['stock'], clean_input($input['image']), (int)$input['id']]);
         }
 
-        // User Management
+        // User Management (Ban and Approve)
         elseif ($action === 'ban_user') {
             $pdo->prepare("UPDATE users SET is_banned = 1 WHERE id = ?")->execute([(int)$input['user_id']]);
+        }
+        elseif ($action === 'approve_user') {
+            $pdo->prepare("UPDATE users SET is_approved = 1 WHERE id = ?")->execute([(int)$input['user_id']]);
         }
 
         // Settings Management

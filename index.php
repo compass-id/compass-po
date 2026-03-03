@@ -1,5 +1,5 @@
 <?php
-// index.php - FIXED MOBILE MENUS
+// index.php - FIXED MOBILE MENUS & ADDED NEW ADMIN ROUTES
 session_start();
 require_once 'config.php';
 require_once 'security.php';
@@ -56,15 +56,14 @@ switch ($page) {
         $page_title = 'Support Tickets';
         break;
 
-    // *** THE FIX: ADDING THE MISSING ORDER DETAIL ROUTE ***
     case 'order_detail':
-        $content = 'view_order_detail.php'; // Make sure you have this file!
+        $content = 'view_order_detail.php'; 
         $page_title = 'Order Details';
         break;
 
     // --- ADMIN PAGES ---
     case 'admin':
-        $content = 'view_admin.php'; // The Dashboard
+        $content = 'view_admin.php'; 
         $page_title = 'Admin Overview';
         break;
 
@@ -77,16 +76,28 @@ switch ($page) {
         $content = 'view_admin_order_detail.php';
         $page_title = 'Order Details (Admin)';
         break;
+
+    // *** NEW ROUTES ADDED HERE ***
+    case 'admin_payments':
+        $content = 'view_admin_payments.php';
+        $page_title = 'Payment History';
+        break;
+
+    case 'admin_shipments':
+        $content = 'view_admin_shipments.php';
+        $page_title = 'Shipment Tracker';
+        break;
+    // *****************************
         
     case 'admin_forms':
         $content = 'view_admin_forms.php';
         $page_title = 'Interest Leads';
         break;
 
-        case 'admin_tiers':
-    $content = 'view_admin_tiers.php';
-    $page_title = 'Tier Manager';
-    break;
+    case 'admin_tiers':
+        $content = 'view_admin_tiers.php';
+        $page_title = 'Tier Manager';
+        break;
 
     case 'admin_books':
         $content = 'view_admin_books.php';
@@ -96,6 +107,16 @@ switch ($page) {
     case 'admin_users':
         $content = 'view_admin_users.php';
         $page_title = 'User Management';
+        break;
+
+    case 'admin_tickets':
+        $content = 'view_admin_tickets.php';
+        $page_title = 'Support Tickets';
+        break;
+
+    case 'admin_settings':
+        $content = 'view_admin_settings.php';
+        $page_title = 'System Settings';
         break;
 
     // --- 404 ERROR ---
@@ -112,7 +133,7 @@ switch ($page) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
-    <title>Compass Pre-Order</title>
+    <title><?php echo $page_title; ?></title>
     <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
 </head>
@@ -208,6 +229,13 @@ switch ($page) {
                     <a href="?page=admin_orders" class="nav-link <?php echo $page=='admin_orders'?'active':''; ?>">
                         <ion-icon name="receipt-outline"></ion-icon> Orders
                     </a>
+
+                    <a href="?page=admin_payments" class="nav-link <?php echo $page=='admin_payments'?'active':''; ?>">
+                        <ion-icon name="cash-outline"></ion-icon> Payments
+                    </a>
+                    <a href="?page=admin_shipments" class="nav-link <?php echo $page=='admin_shipments'?'active':''; ?>">
+                        <ion-icon name="cube-outline"></ion-icon> Shipments
+                    </a>
                     <a href="?page=admin_forms" class="nav-link <?php echo $page=='admin_forms'?'active':''; ?>">
                         <ion-icon name="document-text-outline"></ion-icon> Leads / Forms
                     </a>
@@ -275,8 +303,6 @@ function toggleLandingMenu() {
         <ion-icon name="cart"></ion-icon>
     </a>
 <?php endif; ?>
-
-<script src="app.js"></script>
 
 </body>
 </html>

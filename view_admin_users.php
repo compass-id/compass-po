@@ -1,5 +1,5 @@
 <?php
-// view_admin_users.php - USER MANAGER
+// view_admin_users.php - USER MANAGER (Now with Approval System)
 if (($_SESSION['role'] ?? '') !== 'admin') die("Access Denied");
 $pdo = getDB();
 
@@ -35,11 +35,11 @@ $users = $stmt->fetchAll();
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
             <tr style="background:#f5f5f7; text-align:left;">
                 <th style="padding:12px;">Name</th>
-                <th>Role</th>
+                <th>Role / Status</th>
                 <th>Institution</th>
                 <th>Email</th>
                 <th>Joined</th>
-                <th>Action</th>
+                <th style="text-align:right;">Action</th>
             </tr>
             <?php foreach($users as $u): ?>
             <tr style="border-bottom:1px solid #eee;">
@@ -48,15 +48,24 @@ $users = $stmt->fetchAll();
                     <span style="background:<?php echo $u['role']=='admin'?'#ffebee':'#e8f5e9'; ?>; color:<?php echo $u['role']=='admin'?'#d32f2f':'#2e7d32'; ?>; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">
                         <?php echo strtoupper($u['role']); ?>
                     </span>
+                    <?php if($u['is_banned']): ?>
+                        <span style="color:red; font-weight:bold; font-size:11px; margin-left:5px;">BANNED</span>
+                    <?php elseif(isset($u['is_approved']) && $u['is_approved'] == 0): ?>
+                        <span style="color:orange; font-weight:bold; font-size:11px; margin-left:5px;">PENDING</span>
+                    <?php else: ?>
+                        <span style="color:green; font-weight:bold; font-size:11px; margin-left:5px;">ACTIVE</span>
+                    <?php endif; ?>
                 </td>
                 <td><?php echo htmlspecialchars($u['institution'] ?? '-'); ?></td>
                 <td><?php echo htmlspecialchars($u['email']); ?></td>
                 <td style="color:#888; font-size:12px;"><?php echo date('d M Y', strtotime($u['created_at'])); ?></td>
-                <td>
+                <td style="text-align:right;">
+                    <?php if(isset($u['is_approved']) && $u['is_approved'] == 0): ?>
+                        <button onclick="approveUser(<?php echo $u['id']; ?>)" class="btn btn-sm" style="background:#e8f5e9; color:#2e7d32; padding:4px 8px; font-size:11px;">Approve</button>
+                    <?php endif; ?>
+
                     <?php if(!$u['is_banned']): ?>
-                    <button onclick="banUser(<?php echo $u['id']; ?>)" class="btn btn-sm" style="background:#fff0f0; color:red; padding:4px 8px; font-size:11px;">Ban</button>
-                    <?php else: ?>
-                    <span style="color:red; font-weight:bold;">BANNED</span>
+                        <button onclick="banUser(<?php echo $u['id']; ?>)" class="btn btn-sm" style="background:#fff0f0; color:red; padding:4px 8px; font-size:11px; margin-left:4px;">Ban</button>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -69,6 +78,14 @@ $users = $stmt->fetchAll();
 async function banUser(id) {
     if(!confirm("Ban this user?")) return;
     await fetch('api.php?action=ban_user', {
+        method:'POST', body:JSON.stringify({user_id:id})
+    });
+    location.reload();
+}
+
+async function approveUser(id) {
+    if(!confirm("Approve this user account?")) return;
+    await fetch('api.php?action=approve_user', {
         method:'POST', body:JSON.stringify({user_id:id})
     });
     location.reload();

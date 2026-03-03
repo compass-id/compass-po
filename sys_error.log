@@ -1244,3 +1244,98 @@ Stack trace:
 #1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
 #2 {main}
   thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[03-Mar-2026 17:07:55 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294
+[03-Mar-2026 17:11:48 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.books' doesn't exist in D:\webapp\PHP\CPO\view_catalog.php:7
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_catalog.php(7): PDO->query('SELECT * FROM b...')
+#1 D:\webapp\PHP\CPO\index.php(167): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_catalog.php on line 7
+[03-Mar-2026 17:11:49 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:49 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:51 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:51 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:52 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.users' doesn't exist in D:\webapp\PHP\CPO\view_profile.php:22
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_profile.php(22): PDO->prepare('SELECT * FROM u...')
+#1 D:\webapp\PHP\CPO\index.php(249): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_profile.php on line 22
+[03-Mar-2026 17:11:52 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:54 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:55 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:11:57 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:12:26 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u802091730_seg.system_settings' doesn't exist in D:\webapp\PHP\CPO\view_home.php:4
+Stack trace:
+#0 D:\webapp\PHP\CPO\view_home.php(4): PDO->query('SELECT setting_...')
+#1 D:\webapp\PHP\CPO\index.php(163): require('D:\\webapp\\PHP\\C...')
+#2 {main}
+  thrown in D:\webapp\PHP\CPO\view_home.php on line 4
+[03-Mar-2026 17:19:50 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294
+[03-Mar-2026 17:20:40 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294
+[03-Mar-2026 17:21:29 UTC] PHP Deprecated:  ucfirst(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_order_detail.php on line 209
+[03-Mar-2026 17:38:03 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 17:38:09 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 17:48:28 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 17:48:31 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 17:55:01 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294
+[03-Mar-2026 18:00:09 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:12 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:12 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:13 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:13 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:34 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:00:37 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:21:24 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:25:54 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:43:16 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 202
+[03-Mar-2026 18:48:39 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:51:04 UTC] PHP Warning:  Undefined array key "user_id" in D:\webapp\PHP\CPO\view_order_detail.php on line 5
+[03-Mar-2026 18:51:13 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294
+[03-Mar-2026 18:52:04 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:52:13 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:52:52 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:52:54 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:53:11 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 18:54:05 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_admin_order_detail.php on line 184
+[03-Mar-2026 19:02:31 UTC] PHP Deprecated:  htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in D:\webapp\PHP\CPO\view_profile.php on line 294

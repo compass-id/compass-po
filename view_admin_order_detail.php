@@ -1,5 +1,5 @@
 <?php
-// view_admin_order_detail.php - ULTIMATE COMBINED VERSION
+// view_admin_order_detail.php - FIXED NULL DEPRECATION
 if (($_SESSION['role'] ?? '') !== 'admin') die("Access Denied");
 $pdo = getDB();
 $oid = $_GET['id'] ?? 0;
@@ -13,24 +13,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // B. UPDATE LOGISTICS
-    if (isset($_POST['update_logistics'])) {
-        $pdo->prepare("UPDATE orders SET shipping_status = ?, shipping_snapshot = JSON_SET(COALESCE(shipping_snapshot, '{}'), '$.est_arrival', ?) WHERE id = ?")
-            ->execute([$_POST['shipping_status'], $_POST['est_date'], $oid]);
-        echo "<script>alert('Logistics Updated'); window.location.href='?page=admin_order_detail&id=$oid';</script>";
-        exit;
-    }
-
     // C. VERIFY PAYMENT (AUTO-CONFIRM FIX)
     if (isset($_POST['verify_payment'])) {
         $pdo->prepare("UPDATE order_payments SET status = 'verified' WHERE id = ?")->execute([$_POST['payment_id']]);
+        
         $pdo->prepare("UPDATE orders SET paid_amount = paid_amount + ? WHERE id = ?")->execute([$_POST['amount'], $oid]);
         
-        // Check totals
         $chk = $pdo->query("SELECT total_amount, paid_amount FROM orders WHERE id=$oid")->fetch();
-        $new_pay_status = ($chk['paid_amount'] >= $chk['total_amount']) ? 'paid' : 'partial';
+        $new_pay_status = ($chk['paid_amount'] >= $chk['total_amount'] - 0.01) ? 'paid' : 'partial'; // -0.01 margin for decimals
         
-        // ** FORCE CONFIRM ** if payment is valid
         $pdo->prepare("UPDATE orders SET payment_status = ?, status = 'confirmed' WHERE id = ?")
             ->execute([$new_pay_status, $oid]);
 
@@ -47,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // FETCH DATA
-$stmt = $pdo->prepare("SELECT o.*, u.name as user_name, u.email as user_email, u.phone as user_phone FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?");
+$stmt = $pdo->prepare("SELECT o.*, u.name as user_name, u.email as user_email, u.phone as user_phone, u.institution as user_inst FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?");
 $stmt->execute([$oid]);
 $order = $stmt->fetch();
 if(!$order) die("Order not found");
@@ -73,6 +64,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
         <div>
             <a href="?page=admin_orders" style="color:#666; font-size:14px;">&larr; Back to List</a>
             <h1 style="margin:10px 0 5px 0;">Order #<?php echo $order['id']; ?> <span style="font-weight:normal; color:#666; font-size:16px;">(Admin)</span></h1>
+            <div style="font-size:14px; color:#888;">Client: <?php echo htmlspecialchars($order['user_inst'] ?: 'Individual'); ?></div>
         </div>
         <div>
             <?php 
@@ -96,7 +88,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                 <h3>Items Ordered</h3>
                 <?php foreach($items as $item): ?>
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <div><?php echo htmlspecialchars($item['title']); ?> x<?php echo $item['quantity']; ?></div>
+                        <div><?php echo htmlspecialchars($item['title'] ?? ''); ?> x<?php echo $item['quantity']; ?></div>
                         <div style="font-weight:bold;">Rp <?php echo number_format($item['quantity'] * $item['unit_price']); ?></div>
                     </div>
                 <?php endforeach; ?>
@@ -107,8 +99,8 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                 <h3>Shipment Status</h3>
                 <div style="display:grid; grid-template-columns:1fr 1fr;">
                     <div>
-                        <strong>To:</strong> <?php echo htmlspecialchars($dest_recipient); ?><br>
-                        <span style="font-size:12px; color:#666;"><?php echo htmlspecialchars($dest_address); ?></span>
+                        <strong>To:</strong> <?php echo htmlspecialchars($dest_recipient ?? ''); ?><br>
+                        <span style="font-size:12px; color:#666;"><?php echo htmlspecialchars($dest_address ?? ''); ?></span>
                     </div>
                     <div>
                         <strong>Status:</strong> <?php echo ucfirst($order['shipping_status'] ?? 'Processing'); ?><br>
@@ -124,10 +116,10 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                 <?php else: ?>
                     <table style="width:100%;">
                         <?php foreach($payments as $p): ?>
-                        <tr>
-                            <td>Rp <?php echo number_format($p['amount']); ?></td>
-                            <td><a href="uploads/<?php echo htmlspecialchars($p['proof_image']); ?>" target="_blank">View Proof</a></td>
-                            <td>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:8px 0;">Rp <?php echo number_format($p['amount']); ?></td>
+                            <td><a href="uploads/<?php echo htmlspecialchars($p['proof_image'] ?? ''); ?>" target="_blank" style="color:#007AFF;">View Proof</a></td>
+                            <td style="text-align:right;">
                                 <?php if($p['status'] == 'pending'): ?>
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="payment_id" value="<?php echo $p['id']; ?>">
@@ -135,7 +127,9 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                                         <button type="submit" name="verify_payment" class="btn btn-sm" style="background:#34C759; color:white;">Accept</button>
                                         <button type="submit" name="reject_payment" class="btn btn-sm" style="background:#FF3B30; color:white;">Reject</button>
                                     </form>
-                                <?php else: echo strtoupper($p['status']); endif; ?>
+                                <?php else: ?>
+                                    <span style="font-weight:bold; color:<?php echo $p['status']=='verified'?'green':'red'; ?>;"><?php echo strtoupper($p['status']); ?></span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -164,10 +158,10 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
 
             <div class="card">
                 <h3>Admin Actions</h3>
-                <form method="POST" style="margin-bottom:20px;">
+                <form method="POST">
                     <label style="font-weight:bold;">Set Order Status</label>
                     <div style="display:flex; gap:5px; margin-top:5px;">
-                        <select name="order_status" style="flex:1; padding:8px;">
+                        <select name="order_status" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
                             <option value="pending" <?php echo $order['status']=='pending'?'selected':''; ?>>Pending</option>
                             <option value="confirmed" <?php echo $order['status']=='confirmed'?'selected':''; ?>>Confirmed</option>
                             <option value="rejected" <?php echo $order['status']=='rejected'?'selected':''; ?>>Rejected</option>
@@ -176,32 +170,20 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                         <button type="submit" name="update_status" class="btn btn-sm" style="background:#333; color:white;">Set</button>
                     </div>
                 </form>
-
-                <form method="POST">
-                    <label style="font-weight:bold;">Update Logistics</label>
-                    <select name="shipping_status" style="width:100%; padding:8px; margin-top:5px;">
-                        <option value="processing">Processing</option>
-                        <option value="delivering">Delivering</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                    <input type="date" name="est_date" value="<?php echo $est_arrival; ?>" style="width:100%; margin-top:5px;">
-                    <button type="submit" name="update_logistics" class="btn btn-sm" style="width:100%; margin-top:10px;">Update</button>
-                </form>
             </div>
 
             <div class="card">
                 <h3>Account Contact</h3>
                 <div style="font-size:13px; margin-bottom:10px;">
-                    <ion-icon name="person"></ion-icon> <?php echo htmlspecialchars($order['user_name']); ?>
+                    <ion-icon name="person"></ion-icon> <?php echo htmlspecialchars($order['user_name'] ?? ''); ?>
                 </div>
                 <div style="font-size:13px; margin-bottom:10px;">
-                    <ion-icon name="mail"></ion-icon> <?php echo htmlspecialchars($order['user_email']); ?>
+                    <ion-icon name="mail"></ion-icon> <?php echo htmlspecialchars($order['user_email'] ?? ''); ?>
                 </div>
                 <div style="font-size:13px;">
-                    <ion-icon name="call"></ion-icon> <?php echo htmlspecialchars($order['user_phone']); ?>
+                    <ion-icon name="call"></ion-icon> <?php echo htmlspecialchars($order['user_phone'] ?? ''); ?>
                 </div>
-                <a href="mailto:<?php echo htmlspecialchars($order['user_email']); ?>" class="btn btn-sm btn-outline" style="width:100%; margin-top:15px; text-align:center;">Send Email</a>
+                <a href="mailto:<?php echo htmlspecialchars($order['user_email'] ?? ''); ?>" class="btn btn-sm btn-outline" style="width:100%; margin-top:15px; text-align:center;">Send Email</a>
             </div>
         </div>
 

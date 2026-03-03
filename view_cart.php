@@ -343,7 +343,7 @@ if ($next_tier) {
                                 <input type="hidden" name="book_id" value="<?php echo $item['id']; ?>">
                                 <input type="number" name="qty" value="<?php echo $item['qty']; ?>" 
                                        onchange="this.form.submit()"
-                                       style="width: 50px; border:none; background:none; text-align:center; font-weight:600; -moz-appearance: textfield;">
+                                       style="min-width: 50px; border:none; background:none; text-align:center; font-weight:600; -moz-appearance: textfield;">
                             </form>
                             
                             <form method="POST" style="margin:0;">

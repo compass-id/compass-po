@@ -16,25 +16,37 @@
             </div>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <label style="font-size:11px; font-weight:bold; color:#666;">INSTITUTION / SCHOOL NAME</label>
-            <input type="text" id="reg-institution" required class="form-input">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:#666;">INSTITUTION / SCHOOL</label>
+                <input type="text" id="reg-institution" required class="form-input">
+            </div>
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:#666;">POSITION (Jabatan)</label>
+                <input type="text" id="reg-position" required placeholder="e.g. Principal" class="form-input">
+            </div>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
              <div>
-                <label style="font-size:11px; font-weight:bold; color:#666;">POSITION (Jabatan)</label>
-                <input type="text" id="reg-position" required placeholder="e.g. Principal" class="form-input">
-            </div>
-             <div>
                 <label style="font-size:11px; font-weight:bold; color:#666;">EMAIL ADDRESS</label>
                 <input type="email" id="reg-email" required class="form-input">
             </div>
+             <div>
+                <label style="font-size:11px; font-weight:bold; color:#666;">PHONE NUMBER</label>
+                <input type="text" id="reg-phone" required placeholder="e.g. 0812..." class="form-input">
+            </div>
         </div>
         
-        <div style="margin-bottom: 25px;">
-            <label style="font-size:11px; font-weight:bold; color:#666;">CREATE PASSWORD</label>
-            <input type="password" id="reg-pass" required placeholder="Min 6 chars" minlength="6" class="form-input">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:#666;">CREATE PASSWORD</label>
+                <input type="password" id="reg-pass" required placeholder="Min 6 chars" minlength="6" class="form-input">
+            </div>
+            <div>
+                <label style="font-size:11px; font-weight:bold; color:#666;">CONFIRM PASSWORD</label>
+                <input type="password" id="reg-confirm-pass" required placeholder="Repeat Password" minlength="6" class="form-input">
+            </div>
         </div>
 
         <button type="submit" id="btn-reg" class="btn" style="width:100%; padding:12px;">Create Account</button>
@@ -56,13 +68,24 @@ async function handleRegister(e) {
     const btn = document.getElementById('btn-reg');
     const err = document.getElementById('reg-error');
     
+    const pass = document.getElementById('reg-pass').value;
+    const confirmPass = document.getElementById('reg-confirm-pass').value;
+    
+    // Check if passwords match before making the request
+    if (pass !== confirmPass) {
+        err.innerText = "Passwords do not match.";
+        err.style.display = 'block';
+        return;
+    }
+
     const data = {
         name: document.getElementById('reg-name').value,
         city: document.getElementById('reg-city').value,
         institution: document.getElementById('reg-institution').value,
         position: document.getElementById('reg-position').value,
         email: document.getElementById('reg-email').value,
-        password: document.getElementById('reg-pass').value
+        phone: document.getElementById('reg-phone').value,
+        password: pass
     };
 
     btn.innerText = "Creating..."; btn.disabled = true; err.style.display = 'none';
@@ -76,7 +99,7 @@ async function handleRegister(e) {
         const json = await res.json();
         
         if (json.status === 'success') {
-            alert("Account Created! Please Sign In.");
+            alert("Account Created! Please wait for Admin approval before signing in.");
             window.location.href = 'index.php?page=login';
         } else {
             throw new Error(json.message || "Registration failed");

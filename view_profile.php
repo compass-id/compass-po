@@ -1,5 +1,5 @@
 <?php
-// view_profile.php - WITH PAYMENT NOTIFICATION CENTER & COUNTDOWNS
+// view_profile.php - FULLY RESTORED WITH ADDRESS NOTIFICATION
 if (!isset($_SESSION['user_id'])) echo "<script>window.location='?page=login';</script>";
 $pdo = getDB();
 $uid = $_SESSION['user_id'];
@@ -28,6 +28,9 @@ if (!$user) {
     echo "<script>alert('Session expired. Please login again.'); window.location='?page=login';</script>";
     exit;
 }
+
+// Check Address Count (For Notification Banner)
+$addr_count = $pdo->query("SELECT COUNT(*) FROM user_addresses WHERE user_id=$uid")->fetchColumn();
 
 // 2. Fetch Orders & Tickets
 $orders = $pdo->query("SELECT * FROM orders WHERE user_id=$uid ORDER BY created_at DESC")->fetchAll();
@@ -75,6 +78,19 @@ foreach ($orders as $o) {
 ?>
 
 <h2 style="margin-top:0;">My Dashboard</h2>
+
+<?php if ($addr_count == 0): ?>
+<div class="card" style="background:#fff3e0; border:1px solid #ffe0b2; color:#ef6c00; display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding:15px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <ion-icon name="warning" style="font-size:24px;"></ion-icon>
+        <div>
+            <strong>Shipping Address Missing</strong><br>
+            <span style="font-size:13px;">Please add a shipping address to enable order placements and deliveries.</span>
+        </div>
+    </div>
+    <a href="?page=profile_settings" class="btn btn-sm" style="background:#ef6c00; color:white; text-decoration:none;">Add Address</a>
+</div>
+<?php endif; ?>
 
 <div class="dashboard-grid" style="margin-bottom: 30px;">
     <div class="card">
@@ -216,7 +232,7 @@ foreach ($orders as $o) {
                                 $ship_color = '#1565c0'; 
                                 $ship_label = 'Shipped'; 
                             }
-                            if($ship_status == 'delivered') { $ship_icon = 'home'; $ship_color = 'green'; }
+                            if($ship_status == 'delivered' || $ship_status == 'completed') { $ship_icon = 'home'; $ship_color = 'green'; }
                             if($ship_status == 'cancelled') { $ship_icon = 'ban'; $ship_color = 'red'; }
                         ?>
                         <div style="display:flex; align-items:center; gap:5px; color:<?php echo $ship_color; ?>; font-weight:600; font-size:12px;">
@@ -291,7 +307,7 @@ foreach ($orders as $o) {
             </div>
             <div style="margin-bottom:10px;">
                 <label style="font-weight:bold; font-size:12px;">Phone</label>
-                <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
                 <div>
