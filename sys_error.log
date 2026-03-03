@@ -1209,4 +1209,38 @@ Stack trace:
 [10-Feb-2026 15:17:09 UTC] PHP Warning:  Undefined array key "created_at" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_admin.php on line 192
 [10-Feb-2026 15:19:49 UTC] PHP Parse error:  syntax error, unexpected token "++" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_admin.php on line 192
 [10-Feb-2026 16:28:55 UTC] PHP Parse error:  syntax error, unexpected token ";" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_profile.php on line 137
-[12-Feb-2026 19:53:52 UTC] PHP Deprecated:  Function curl_close() is deprecated since 8.5, as it has no effect since PHP 8.0 in D:\Webapp\PHP\CPO\view_catalog.php on line 20
+[12-Feb-2026 22:29:18 UTC] PHP Warning:  Undefined array key "cart" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:18 UTC] PHP Fatal error:  Uncaught TypeError: array_sum(): Argument #1 ($array) must be of type array, null given in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php:44
+Stack trace:
+#0 /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php(44): array_sum()
+#1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
+#2 {main}
+  thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:22 UTC] PHP Warning:  Undefined array key "cart" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:22 UTC] PHP Fatal error:  Uncaught TypeError: array_sum(): Argument #1 ($array) must be of type array, null given in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php:44
+Stack trace:
+#0 /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php(44): array_sum()
+#1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
+#2 {main}
+  thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:28 UTC] PHP Warning:  Undefined array key "cart" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:28 UTC] PHP Fatal error:  Uncaught TypeError: array_sum(): Argument #1 ($array) must be of type array, null given in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php:44
+Stack trace:
+#0 /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php(44): array_sum()
+#1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
+#2 {main}
+  thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:34 UTC] PHP Warning:  Undefined array key "cart" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:34 UTC] PHP Fatal error:  Uncaught TypeError: array_sum(): Argument #1 ($array) must be of type array, null given in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php:44
+Stack trace:
+#0 /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php(44): array_sum()
+#1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
+#2 {main}
+  thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:43 UTC] PHP Warning:  Undefined array key "cart" in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44
+[12-Feb-2026 22:29:43 UTC] PHP Fatal error:  Uncaught TypeError: array_sum(): Argument #1 ($array) must be of type array, null given in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php:44
+Stack trace:
+#0 /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php(44): array_sum()
+#1 /home/u802091730/domains/compasspubindonesia.com/public_html/po/index.php(167): require('/home/u80209173...')
+#2 {main}
+  thrown in /home/u802091730/domains/compasspubindonesia.com/public_html/po/view_cart.php on line 44

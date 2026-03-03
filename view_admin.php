@@ -52,12 +52,12 @@ $top_books = $pdo->query("
 ")->fetchAll();
 
 // C. RECENT ACTIVITY
-$recent_orders = $pdo->query("SELECT o.id, u.name, o.created_at FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC LIMIT 5")->fetchAll();
+$recent_orders = $pdo->query("SELECT o.id, u.name, o.created_at FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC")->fetchAll();
 $low_stock = $pdo->query("SELECT title, stock FROM books WHERE stock < 50 LIMIT 3")->fetchAll();
-$recent_tickets = $pdo->query("SELECT t.subject, u.name, t.created_at FROM tickets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 5")->fetchAll();
+$recent_tickets = $pdo->query("SELECT t.subject, u.name, t.created_at FROM tickets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC")->fetchAll();
 
 // D. TOP POTENTIAL SCHOOLS
-$leads = $pdo->query("SELECT * FROM interest_forms ORDER BY student_count DESC LIMIT 5")->fetchAll();
+$leads = $pdo->query("SELECT * FROM interest_forms ORDER BY student_count DESC")->fetchAll();
 
 // E. TOP VALUE CLIENTS (FIXED: Exclude Rejected/Cancelled/Pending)
 $top_orders_list = $pdo->query("

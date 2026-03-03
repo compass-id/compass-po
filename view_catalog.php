@@ -28,7 +28,7 @@ if ($response) {
                 'isbn' => $item['PB_ISBN'],
                 'category' => $item['PB_PUBLISHER'] ?: 'Imported',
                 'base_price' => $item['GDS_PRICE'] * $exchangeRate,
-                'cover_image' => 'https://api452.rallyz.co.kr/' . $item['THUMB_URL'],
+                'cover_image' => 'https://8izg4bob10557.edge.naverncp.com/' . $item['THUMB_URL'],
                 'stock' => 999,
                 'is_external' => true 
             ];
@@ -154,12 +154,6 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
                 <?php if ($is_early_bird_active): ?>
                     <span style="background: #007AFF; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">EARLY BIRD</span>
                 <?php endif; ?>
-                
-                <?php if ($is_ext): ?>
-                    <span style="background: #34C759; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">IMPORT</span>
-                <?php else: ?>
-                    <span style="background: #FF9500; color: white; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold;">LOCAL</span>
-                <?php endif; ?>
             </div>
 
             <img src="<?php echo htmlspecialchars($b_img); ?>" 
@@ -247,8 +241,8 @@ $is_early_bird_active = ($eb_deadline && $today <= $eb_deadline);
 
 <script>
 // --- INFINITE SCROLL LOGIC ---
-let visibleLimit = 12; // Start with 12 items
-const increment = 12;  // Load 12 more on scroll
+let visibleLimit = 10; // Start with 12 items
+const increment = 10;  // Load 12 more on scroll
 let isSearchActive = false;
 
 document.addEventListener('DOMContentLoaded', function() {

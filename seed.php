@@ -26,7 +26,7 @@ try {
                     'isbn' => $item['PB_ISBN'],
                     'category' => $item['PB_PUBLISHER'] ?: 'Imported',
                     'base_price' => $item['GDS_PRICE'] * $exchangeRate,
-                    'cover_image' => 'https://api452.rallyz.co.kr/' . $item['THUMB_URL']
+                    'cover_image' => 'https://8izg4bob10557.edge.naverncp.com/' . $item['THUMB_URL']
                 ];
             }
         }

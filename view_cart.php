@@ -1,5 +1,5 @@
 <?php
-// view_cart.php - FULL FEATURES + FIXED DB COLUMNS
+// view_cart.php - HYBRID: ORIGINAL FEATURES + API SUPPORT
 if (session_status() === PHP_SESSION_NONE) session_start();
 $pdo = getDB();
 
@@ -23,8 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo "<script>alert('Please select a shipping address'); window.location='?page=cart';</script>"; exit;
         }
 
-        // --- FETCH ADDRESS DETAILS (FIX FOR MISSING COLUMN) ---
-        // We fetch the address data to save as a snapshot, since 'address_id' column doesn't exist in orders
+        // --- FETCH ADDRESS DETAILS ---
         $stmt_addr = $pdo->prepare("SELECT * FROM user_addresses WHERE id = ? AND user_id = ?");
         $stmt_addr->execute([$address_id, $uid]);
         $addr_data = $stmt_addr->fetch(PDO::FETCH_ASSOC);
@@ -36,23 +35,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $shipping_snapshot = json_encode($addr_data);
         $shipping_city = $addr_data['city'] ?? '';
 
-        // --- RE-CALCULATE TOTALS ---
+        // --- RE-CALCULATE TOTALS (DB + API) ---
         $rows = $pdo->query("SELECT * FROM system_settings")->fetchAll();
         $settings = [];
         foreach ($rows as $r) $settings[$r['setting_key']] = $r['setting_value'];
         $eb_deadline = $settings['early_bird_deadline'] ?? '2026-04-30';
         $today = date('Y-m-d');
         
-        $ids = array_keys($cart);
-        $in = str_repeat('?,', count($ids) - 1) . '?';
-        $stmt = $pdo->prepare("SELECT * FROM books WHERE id IN ($in)");
-        $stmt->execute($ids);
-        $db_books = $stmt->fetchAll();
+        // 1. DB Items
+        $cart_ids = array_keys($cart);
+        $db_ids = array_filter($cart_ids, 'is_numeric');
+        $db_books = [];
+        
+        if (!empty($db_ids)) {
+            $in = str_repeat('?,', count($db_ids) - 1) . '?';
+            $stmt = $pdo->prepare("SELECT * FROM books WHERE id IN ($in)");
+            $stmt->execute($db_ids);
+            $db_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
+        // 2. API Items (Fetch if needed)
+        $found_db_ids = array_column($db_books, 'id');
+        $missing_ids = array_diff($cart_ids, $found_db_ids);
+        $api_items_map = [];
+
+        if (!empty($missing_ids)) {
+            $ch = curl_init("https://api452.rallyz.co.kr/api/savewon/goods");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $response = curl_exec($ch);
+            // curl_close($ch); // PHP 8+ auto-closes
+            
+            $apiData = json_decode($response, true);
+            if (isset($apiData['Data'])) {
+                foreach ($apiData['Data'] as $g) {
+                    $raw_id = $g['GDS_ID'];
+                    $pre_id = 'ext_' . $g['GDS_ID'];
+                    // Map API price
+                    if (in_array($raw_id, $missing_ids) || in_array($pre_id, $missing_ids)) {
+                        $key = in_array($pre_id, $missing_ids) ? $pre_id : $raw_id;
+                        $api_items_map[$key] = [
+                            'price' => $g['GDS_PRICE'] * 12, // Exchange Rate
+                            'id_val' => 0 // API items get ID 0 in DB or specific logic
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 3. Process All Items
         $total_qty = 0;
         $gross_total = 0;
         $order_items_data = [];
 
+        // Add DB Items
         foreach ($db_books as $b) {
             $qty = $cart[$b['id']];
             $is_eb = ($eb_deadline && $today <= $eb_deadline);
@@ -61,11 +97,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $total_qty += $qty;
             $gross_total += $price * $qty;
             
-            $order_items_data[] = [
-                'id' => $b['id'],
-                'qty' => $qty,
-                'price' => $price
-            ];
+            $order_items_data[] = ['id' => $b['id'], 'qty' => $qty, 'price' => $price];
+        }
+
+        // Add API Items
+        foreach ($missing_ids as $mid) {
+            if (isset($api_items_map[$mid])) {
+                $qty = $cart[$mid];
+                $price = $api_items_map[$mid]['price'];
+                
+                $total_qty += $qty;
+                $gross_total += $price * $qty;
+                
+                $order_items_data[] = ['id' => 0, 'qty' => $qty, 'price' => $price]; // ID 0 for non-DB items
+            }
         }
 
         // Tier Discount
@@ -87,8 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         try {
             $pdo->beginTransaction();
 
-            // FIXED SQL: Using 'shipping_snapshot' instead of 'address_id'
-            $stmt = $pdo->prepare("INSERT INTO orders (user_id, shipping_snapshot, shipping_city, total_amount, status, payment_status, created_at) VALUES (?, ?, ?, ?, 'pending', 'pending', NOW())");
+            $stmt = $pdo->prepare("INSERT INTO orders (user_id, shipping_snapshot, shipping_city, total_amount, status, payment_status, created_at) VALUES (?, ?, ?, ?, 'pending', 'unpaid', NOW())");
             $stmt->execute([$uid, $shipping_snapshot, $shipping_city, $net_total]);
             $order_id = $pdo->lastInsertId();
 
@@ -115,8 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     // 2. CART UPDATE LOGIC
-    $id = (int)($_POST['book_id'] ?? 0);
-    if ($id > 0) {
+    $id = $_POST['book_id'] ?? 0; // Removed (int) cast to support API string IDs
+    if ($id) {
         if ($_POST['action'] === 'add_to_cart') {
             $_SESSION['cart'][$id] = ($_SESSION['cart'][$id] ?? 0) + 1;
         } elseif ($_POST['action'] === 'update_cart' || $_POST['action'] === 'update_qty') {
@@ -161,13 +205,55 @@ if (empty($cart_items)) {
     return;
 }
 
-// Data Fetching
-$ids = array_keys($cart_items);
-$in = str_repeat('?,', count($ids) - 1) . '?';
-$stmt = $pdo->prepare("SELECT * FROM books WHERE id IN ($in)");
-$stmt->execute($ids);
-$books = $stmt->fetchAll();
+// Data Fetching (Hybrid)
+$cart_ids = array_keys($cart_items);
+$db_ids = array_filter($cart_ids, 'is_numeric');
+$books_display = [];
 
+// 1. Fetch DB Items
+if (!empty($db_ids)) {
+    $in = str_repeat('?,', count($db_ids) - 1) . '?';
+    $stmt = $pdo->prepare("SELECT * FROM books WHERE id IN ($in)");
+    $stmt->execute($db_ids);
+    $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($books as $b) {
+        $b['is_external'] = false;
+        $books_display[] = $b;
+    }
+}
+
+// 2. Fetch API Items (If needed)
+$found_db_ids = array_column($books_display, 'id');
+$missing_ids = array_diff($cart_ids, $found_db_ids);
+
+if (!empty($missing_ids)) {
+    $ch = curl_init("https://api452.rallyz.co.kr/api/savewon/goods");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    $response = curl_exec($ch);
+    $apiData = json_decode($response, true);
+
+    if (isset($apiData['Data'])) {
+        foreach ($apiData['Data'] as $g) {
+            $raw_id = $g['GDS_ID'];
+            $pre_id = 'ext_' . $g['GDS_ID'];
+            
+            if (in_array($raw_id, $missing_ids) || in_array($pre_id, $missing_ids)) {
+                $matched_id = in_array($pre_id, $missing_ids) ? $pre_id : $raw_id;
+                $books_display[] = [
+                    'id' => $matched_id,
+                    'title' => $g['PB_NM'],
+                    'cover_image' => 'https://api452.rallyz.co.kr/' . $g['THUMB_URL'],
+                    'base_price' => $g['GDS_PRICE'] * 12,
+                    'is_external' => true
+                ];
+            }
+        }
+    }
+}
+
+// Fetch Addresses
 $addrs = $pdo->prepare("SELECT * FROM user_addresses WHERE user_id=? ORDER BY is_default DESC");
 $addrs->execute([$uid]);
 $addresses = $addrs->fetchAll();
@@ -176,9 +262,8 @@ $addresses = $addrs->fetchAll();
 $total_qty = 0;
 $gross_total = 0;
 $today = date('Y-m-d');
-$books_display = [];
 
-foreach ($books as $b) {
+foreach ($books_display as &$b) {
     $qty = $cart_items[$b['id']];
     $is_eb = ($eb_deadline && $today <= $eb_deadline);
     $price = $is_eb ? ($b['base_price'] * 0.95) : $b['base_price'];
@@ -186,10 +271,11 @@ foreach ($books as $b) {
     $total_qty += $qty;
     $gross_total += $price * $qty;
     
+    $b['qty'] = $qty;
     $b['active_price'] = $price;
     $b['is_eb'] = $is_eb;
-    $books_display[] = $b;
 }
+unset($b); // break ref
 
 // Tier Logic
 $tiers = $pdo->query("SELECT * FROM tier_rules ORDER BY min_qty ASC")->fetchAll();
@@ -201,6 +287,7 @@ foreach ($tiers as $tier) {
         $current_tier = $tier;
     } else {
         if (!$next_tier) $next_tier = $tier; 
+        break; 
     }
 }
 
@@ -212,7 +299,7 @@ $progress_pct = 0;
 $progress_msg = "You are on the highest tier!";
 if ($next_tier) {
     $needed = $next_tier['min_qty'] - $total_qty;
-    $progress_pct = ($total_qty / $next_tier['min_qty']) * 100;
+    $progress_pct = min(100, ($total_qty / $next_tier['min_qty']) * 100);
     $progress_msg = "Add <strong>$needed more</strong> to unlock {$next_tier['name']} ({$next_tier['discount_percent']}%)!";
 } else {
     $progress_pct = 100;
@@ -225,9 +312,7 @@ if ($next_tier) {
         
         <div class="card" style="padding: 0; overflow: hidden;">
             <table style="width:100%; border-collapse:collapse;">
-                <?php foreach($books_display as $item): 
-                    $qty = $cart_items[$item['id']];
-                ?>
+                <?php foreach($books_display as $item): ?>
                 <tr style="border-bottom:1px solid #eee;">
                     <td style="padding:15px; width:60px;">
                         <img src="<?php echo htmlspecialchars($item['cover_image'] ?? ''); ?>" style="width:50px; border-radius:4px;">
@@ -237,7 +322,10 @@ if ($next_tier) {
                         <div style="color: #666;">
                             Rp <?php echo number_format($item['active_price']); ?>
                             <?php if($item['is_eb']): ?>
-                                <p><span style="font-size:10px; background:#d32f2f; color:white; padding:2px 6px; border-radius:4px;">EARLY BIRD</span></p>
+                                <span style="font-size:10px; background:#d32f2f; color:white; padding:2px 6px; border-radius:4px;">EARLY BIRD</span>
+                            <?php endif; ?>
+                            <?php if($item['is_external']): ?>
+                                <span style="font-size:10px; background:#34C759; color:white; padding:2px 6px; border-radius:4px;">IMPORT</span>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -246,28 +334,28 @@ if ($next_tier) {
                             <form method="POST" style="margin:0;">
                                 <input type="hidden" name="action" value="update_qty">
                                 <input type="hidden" name="book_id" value="<?php echo $item['id']; ?>">
-                                <input type="hidden" name="qty" value="<?php echo $qty - 1; ?>">
+                                <input type="hidden" name="qty" value="<?php echo $item['qty'] - 1; ?>">
                                 <button type="submit" style="border:none; background:none; padding:5px 12px; cursor:pointer;">−</button>
                             </form>
                             
                             <form method="POST" style="margin:0;">
                                 <input type="hidden" name="action" value="update_qty">
                                 <input type="hidden" name="book_id" value="<?php echo $item['id']; ?>">
-                                <input type="number" name="qty" value="<?php echo $qty; ?>" 
+                                <input type="number" name="qty" value="<?php echo $item['qty']; ?>" 
                                        onchange="this.form.submit()"
-                                       style="min-width: 15px; border:none; background:none; text-align:center; font-weight:600;">
+                                       style="width: 50px; border:none; background:none; text-align:center; font-weight:600; -moz-appearance: textfield;">
                             </form>
                             
                             <form method="POST" style="margin:0;">
                                 <input type="hidden" name="action" value="update_qty">
                                 <input type="hidden" name="book_id" value="<?php echo $item['id']; ?>">
-                                <input type="hidden" name="qty" value="<?php echo $qty + 1; ?>">
+                                <input type="hidden" name="qty" value="<?php echo $item['qty'] + 1; ?>">
                                 <button type="submit" style="border:none; background:none; padding:5px 12px; cursor:pointer;">+</button>
                             </form>
                         </div>
                     </td>
                     <td style="padding:15px; text-align:right;">
-                        Rp <?php echo number_format($item['active_price'] * $qty); ?>
+                        Rp <?php echo number_format($item['active_price'] * $item['qty']); ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
