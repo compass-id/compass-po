@@ -19,35 +19,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ACTION: Confirm Delivery WITH PROOF (Req #7)
     if (isset($_POST['confirm_delivery'])) {
         $proof_img = null;
-        if (!empty($_FILES['arrival_proof']['name'])) {
-            $proof_img = "arrival_" . $oid . "_" . time() . ".jpg";
-            move_uploaded_file($_FILES['arrival_proof']['tmp_name'], "uploads/" . $proof_img);
-        }
-
-        if ($proof_img) {
-            $pdo->prepare("UPDATE orders SET shipping_status = 'completed', confirmed_arrival = NOW(), arrival_proof = ? WHERE id = ? AND user_id = ?")
-                ->execute([$proof_img, $oid, $uid]);
-            echo "<script>alert('Thank you! Item arrival confirmed.'); window.location.href='?page=order_detail&id=$oid';</script>";
-            exit;
+        if (isset($_FILES['arrival_proof']) && $_FILES['arrival_proof']['error'] === UPLOAD_ERR_OK) {
+            if (!is_dir('uploads')) {
+                mkdir('uploads', 0777, true);
+            }
+            $ext = pathinfo($_FILES['arrival_proof']['name'], PATHINFO_EXTENSION);
+            $proof_img = "arrival_" . $oid . "_" . time() . "." . ($ext ?: 'jpg');
+            
+            if(move_uploaded_file($_FILES['arrival_proof']['tmp_name'], "uploads/" . $proof_img)) {
+                $pdo->prepare("UPDATE orders SET shipping_status = 'completed', confirmed_arrival = NOW(), arrival_proof = ? WHERE id = ? AND user_id = ?")
+                    ->execute([$proof_img, $oid, $uid]);
+                echo "<script>alert('Thank you! Item arrival confirmed.'); window.location.href='?page=order_detail&id=$oid';</script>";
+                exit;
+            } else {
+                echo "<script>alert('Failed to save file. Check folder permissions.');</script>";
+            }
         } else {
-            echo "<script>alert('Please upload a photo of the received item as proof.');</script>";
+            $err = $_FILES['arrival_proof']['error'] ?? 'Unknown';
+            echo "<script>alert('Upload failed or no file selected. Error code: $err');</script>";
         }
     }
 
     // ACTION: Upload Payment Proof
     if (isset($_FILES['proof'])) {
-        $filename = "proof_" . $oid . "_" . time() . ".jpg";
-        $amount = (float)($_POST['amount'] ?? 0);
-        
-        if ($amount > 0) {
-            move_uploaded_file($_FILES['proof']['tmp_name'], "uploads/" . $filename); 
-            $pdo->prepare("INSERT INTO order_payments (order_id, amount, proof_image, status, payment_date) VALUES (?, ?, ?, 'pending', NOW())")->execute([$oid, $amount, $filename]);
+        if ($_FILES['proof']['error'] === UPLOAD_ERR_OK) {
+            if (!is_dir('uploads')) {
+                mkdir('uploads', 0777, true);
+            }
+            $ext = pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION);
+            $filename = "proof_" . $oid . "_" . time() . "." . ($ext ?: 'jpg');
+            $amount = (float)($_POST['amount'] ?? 0);
             
-            // Set to partial to stop the initial 24h timer cancellation
-            $pdo->prepare("UPDATE orders SET payment_status = 'partial' WHERE id = ?")->execute([$oid]);
-            echo "<script>alert('Proof uploaded! Waiting for verification.'); window.location.href='?page=order_detail&id=$oid';</script>";
+            if ($amount > 0) {
+                if (move_uploaded_file($_FILES['proof']['tmp_name'], "uploads/" . $filename)) {
+                    $pdo->prepare("INSERT INTO order_payments (order_id, amount, proof_image, status, payment_date) VALUES (?, ?, ?, 'pending', NOW())")->execute([$oid, $amount, $filename]);
+                    
+                    // Set to partial to stop the initial 24h timer cancellation
+                    $pdo->prepare("UPDATE orders SET payment_status = 'partial' WHERE id = ?")->execute([$oid]);
+                    echo "<script>alert('Proof uploaded! Waiting for verification.'); window.location.href='?page=order_detail&id=$oid';</script>";
+                } else {
+                    echo "<script>alert('Failed to save uploaded file. Check directory permissions.'); window.location.href='?page=order_detail&id=$oid';</script>";
+                }
+            } else {
+                echo "<script>alert('Please input a valid amount to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
+            }
         } else {
-            echo "<script>alert('Please select at least one month to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
+            $err = $_FILES['proof']['error'];
+            echo "<script>alert('Upload error code: $err. Check file size limits.'); window.location.href='?page=order_detail&id=$oid';</script>";
         }
         exit;
     }
@@ -188,7 +206,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
         <?php $time_left = $next_deadline - $now; ?>
         <div class="card" style="background:<?php echo $time_left > 0 ? '#fff3e0' : '#ffebee'; ?>; border:1px solid <?php echo $time_left > 0 ? '#ffe0b2' : '#ffcdd2'; ?>; text-align:center; padding:15px; margin-bottom:20px;">
             <div style="font-weight:bold; color:<?php echo $time_left > 0 ? '#ef6c00' : '#c62828'; ?>; font-size:16px; margin-bottom:5px;">
-                <ion-icon name="time-outline" style="vertical-align:middle;"></ion-icon> Next Payment Deadline
+                <ion-icon name="time-outline" style="vertical-align:middle"></ion-icon> Next Payment Deadline
             </div>
             <?php if($time_left > 0): ?>
                 <div style="color:#555; font-size:13px; margin-bottom:10px;">
@@ -308,9 +326,17 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                 </div>
 
                 <?php if($remaining > 0 && !$is_cancelled): ?>
+                    
+                    <div style="background:#f0f9ff; border:1px solid #bce8f1; color:#31708f; padding:15px; border-radius:8px; font-size:13px; margin-bottom:20px; text-align:center;">
+                        <ion-icon name="card-outline" style="font-size: 18px; vertical-align: middle; margin-right: 5px;"></ion-icon>
+                        <strong>Payment Method: Bank Transfer</strong><br>
+                        PT Solusi Edukasi Gemilang<br>
+                        Account No: <strong>4685015898</strong>
+                    </div>
+
                     <form method="POST" enctype="multipart/form-data" style="background:#f9f9f9; padding:15px; border-radius:8px;">
                         
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Select Months to Pay</label>
+                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Select Months or Enter Custom Amount</label>
                         <div style="max-height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
                             <?php foreach($schedule as $s): ?>
                                 <?php if($s['remaining_amount'] > 0): ?>
@@ -325,15 +351,19 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                             <?php endforeach; ?>
                         </div>
 
-                        <div style="font-size:15px; font-weight:800; text-align:right; margin-bottom:15px; color:#333;">
-                            Selected: Rp <span id="selected-total-display">0</span>
+                        <div style="margin-bottom:15px;">
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Manual Input (Rp):</label>
+                            <input type="number" name="amount" id="selected-total-input" value="0" min="1" max="<?php echo $remaining; ?>" oninput="handleManualInput()" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:16px; font-weight:bold; text-align:right;">
                         </div>
-                        <input type="hidden" name="amount" id="selected-total-input" value="0">
+
+                        <div style="font-size:15px; font-weight:800; text-align:right; margin-bottom:15px; color:#333;">
+                            Total to Pay: Rp <span id="selected-total-display">0</span>
+                        </div>
                         
                         <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Upload Proof of Payment</label>
                         <input type="file" name="proof" required style="font-size:13px; width:100%; padding:8px; margin-bottom:10px; background:white; border:1px solid #ddd; border-radius:4px;">
                         
-                        <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Pay Selected</button>
+                        <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Submit Payment</button>
                     </form>
                     
                     <?php if($verified_paid == 0): ?>
@@ -395,7 +425,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
 </div>
 
 <script>
-// Logic to calculate dynamic selected payment amounts
+// Logic to calculate dynamically from checkboxes
 function calculateTotal() {
     let total = 0;
     const checkboxes = document.querySelectorAll('.month-checkbox');
@@ -404,10 +434,30 @@ function calculateTotal() {
             total += parseFloat(cb.value);
         }
     });
+    
+    // Auto-fill manual input and display
+    document.getElementById('selected-total-input').value = total || "";
     document.getElementById('selected-total-display').innerText = total.toLocaleString('id-ID');
-    document.getElementById('selected-total-input').value = total;
     
     // Disable button if nothing is selected
     document.getElementById('upload-btn').disabled = (total <= 0);
+}
+
+// Logic to override if user types custom amount directly
+function handleManualInput() {
+    let inputField = document.getElementById('selected-total-input');
+    let val = parseFloat(inputField.value) || 0;
+    
+    // Update display formatting
+    document.getElementById('selected-total-display').innerText = val.toLocaleString('id-ID');
+    
+    // Uncheck boxes to reflect that manual input is taking over
+    const checkboxes = document.querySelectorAll('.month-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = false;
+    });
+    
+    // Enable/Disable button
+    document.getElementById('upload-btn').disabled = (val <= 0);
 }
 </script>
