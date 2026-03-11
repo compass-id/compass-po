@@ -1,5 +1,5 @@
 <?php
-// view_order_detail.php - 12 MONTH INSTALLMENTS, DP, & MANUAL RUPIAH PAYMENT
+// view_order_detail.php - DYNAMIC 12 MONTHS (MANUAL DP & DECREASING AMOUNTS)
 if (!isset($_SESSION['user_id'])) echo "<script>window.location='?page=login';</script>";
 $pdo = getDB();
 $uid = $_SESSION['user_id'];
@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // ACTION: Confirm Delivery WITH PROOF (Req #7)
+    // ACTION: Confirm Delivery WITH PROOF
     if (isset($_POST['confirm_delivery'])) {
         $proof_img = null;
         if (isset($_FILES['arrival_proof']) && $_FILES['arrival_proof']['error'] === UPLOAD_ERR_OK) {
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ACTION: Upload Payment Proof
+    // ACTION: Upload Payment Proof (Handles DP, Checklist, and Manual Inputs)
     if (isset($_FILES['proof'])) {
         if ($_FILES['proof']['error'] === UPLOAD_ERR_OK) {
             if (!is_dir('uploads')) {
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     echo "<script>alert('Failed to save uploaded file. Check directory permissions.'); window.location.href='?page=order_detail&id=$oid';</script>";
                 }
             } else {
-                echo "<script>alert('Please enter a valid amount to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
+                echo "<script>alert('Please input a valid amount to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
             }
         } else {
             $err = $_FILES['proof']['error'];
@@ -89,27 +89,24 @@ $items = $stmtItems->fetchAll();
 // Fetch Payments & Calculate Verified Totals
 $payments = $pdo->query("SELECT * FROM order_payments WHERE order_id = $oid ORDER BY payment_date DESC")->fetchAll();
 $verified_paid = 0; 
-$active_payments = 0; // Check if user has made at least one payment (DP)
+$pending_payments = 0;
 foreach ($payments as $p) {
     if ($p['status'] == 'verified') $verified_paid += $p['amount'];
-    if (in_array($p['status'], ['verified', 'pending'])) $active_payments++;
+    if ($p['status'] == 'pending') $pending_payments += $p['amount'];
 }
 $remaining = $order['total_amount'] - $verified_paid;
 if($remaining < 0) $remaining = 0;
 $progress = ($order['total_amount'] > 0) ? ($verified_paid / $order['total_amount']) * 100 : 0;
-$has_dp = $active_payments > 0; // If true, DP is done, show checkboxes + manual
 
 
-// --- 3. WATERFALL 12-MONTH SCHEDULE LOGIC ---
+// --- 3. DYNAMIC 12-MONTH SCHEDULE LOGIC ---
 $created_time = strtotime($order['created_at']);
 $now = time();
-$installment_amount = floor($order['total_amount'] / 12);
 $schedule = [];
-$temp_paid = $verified_paid;
-$next_deadline = null; // Used for universal countdown
+$next_deadline = null; 
 $is_cancelled = in_array($order['status'], ['cancelled', 'rejected']);
 
-// Strict Initial 24h Rule Check
+// Strict Initial 24h Rule Check (For First Payment / DP)
 $initial_deadline = $created_time + (24 * 60 * 60);
 if ($now > $initial_deadline && $verified_paid <= 0 && $order['payment_status'] !== 'partial' && !$is_cancelled) {
     $pdo->prepare("UPDATE orders SET status = 'rejected', payment_status = 'unpaid', shipping_status = 'cancelled' WHERE id = ?")->execute([$oid]);
@@ -119,50 +116,46 @@ if ($now > $initial_deadline && $verified_paid <= 0 && $order['payment_status'] 
     $is_cancelled = true;
 }
 
-for ($i = 1; $i <= 12; $i++) {
-    // 12th month corrects rounding decimals
-    $this_installment = ($i == 12) ? ($order['total_amount'] - ($installment_amount * 11)) : $installment_amount;
-    
-    // Due Dates: Month 1 = 24 hours. Months 2-12 = +30, 60, 90... days.
-    if ($i == 1) {
-        $due_date = $created_time + (24 * 60 * 60);
-    } else {
-        $due_date = $created_time + (($i - 1) * 30 * 24 * 60 * 60);
-    }
-    
-    $month_paid = 0;
+// DP Check & Calculation
+// If $verified_paid == 0, DP hasn't been paid. 
+// If paid, the remaining balance is dynamically split across the 12 months.
+if ($verified_paid == 0) {
+    $monthly_amount = $order['total_amount'] / 12; // Base preview amount
+    $next_deadline = $initial_deadline;
+} else {
+    $monthly_amount = $remaining / 12; // Spread remaining evenly to decrease installment amounts
+}
 
-    // Waterfall Attribution
-    if ($temp_paid >= $this_installment - 0.01) { 
-        $st = 'Paid';
-        $col = 'green';
-        $month_paid = $this_installment;
-        $temp_paid -= $this_installment;
-    } elseif ($temp_paid > 0) {
-        $st = 'Partial (Rp ' . number_format($temp_paid) . ')';
-        $col = ($now > $due_date) ? 'red' : 'orange';
-        $month_paid = $temp_paid;
-        $temp_paid = 0;
-        if (!$next_deadline) $next_deadline = $due_date;
-    } else {
-        $st = ($now > $due_date) ? 'Overdue' : 'Pending';
-        $col = ($now > $due_date) ? 'red' : 'orange';
-        if (!$next_deadline) $next_deadline = $due_date;
-    }
+for ($i = 1; $i <= 12; $i++) {
+    // Due Dates: Month 1-12 are +30, 60, 90... days after the initial 24h DP window.
+    $due_date = $initial_deadline + ($i * 30 * 24 * 60 * 60);
+    
+    $month_remaining = $monthly_amount;
 
     if ($is_cancelled) {
         $st = 'Cancelled';
         $col = 'red';
+    } elseif ($verified_paid == 0) {
+        $st = 'Awaiting DP';
+        $col = '#999';
+    } elseif ($remaining <= 0) {
+        $st = 'Paid';
+        $col = 'green';
+        $month_remaining = 0;
+    } else {
+        $st = ($now > $due_date) ? 'Overdue' : 'Pending';
+        $col = ($now > $due_date) ? 'red' : 'orange';
+        
+        if (!$next_deadline && $now <= $due_date) $next_deadline = $due_date;
+        if (!$next_deadline && $st == 'Overdue') $next_deadline = $due_date;
     }
 
     $schedule[] = [
         'month' => $i,
-        'amount' => $this_installment,
         'due_date' => $due_date,
         'status' => $st,
         'color' => $col,
-        'paid_amount' => $month_paid,
-        'remaining_amount' => $this_installment - $month_paid
+        'remaining_amount' => $month_remaining
     ];
 }
 
@@ -289,18 +282,21 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
             </div>
 
             <div class="card">
-                <h3 style="margin-top:0;">12-Month Payment Schedule</h3>
+                <h3 style="margin-top:0;">Dynamic 12-Month Schedule</h3>
+                <div style="font-size:12px; color:#666; margin-bottom:15px;">
+                    Any manual payments or down payments strictly reduce your monthly installments evenly over the remaining months. 12 terms are maintained.
+                </div>
                 <table style="width:100%; font-size:13px; border-collapse:collapse;">
                     <tr style="background:#f9f9f9; text-align:left; color:#666;">
                         <th style="padding:8px;">Term</th>
-                        <th style="padding:8px;">Amount</th>
+                        <th style="padding:8px;">Current Installment</th>
                         <th style="padding:8px;">Due Date</th>
                         <th style="padding:8px;">Status</th>
                     </tr>
                     <?php foreach($schedule as $s): ?>
                     <tr style="border-bottom:1px solid #eee;">
                         <td style="padding:10px 8px; font-weight:bold;">Month <?php echo $s['month']; ?></td>
-                        <td style="padding:10px 8px;">Rp <?php echo number_format($s['amount']); ?></td>
+                        <td style="padding:10px 8px; color:var(--primary); font-weight:bold;">Rp <?php echo number_format($s['remaining_amount']); ?></td>
                         <td style="padding:10px 8px; color:#555;"><?php echo date('d M Y', $s['due_date']); ?></td>
                         <td style="padding:10px 8px; font-weight:bold; color:<?php echo $s['color']; ?>;">
                             <?php echo $s['status']; ?>
@@ -326,6 +322,13 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                     <div style="text-align:right; font-size:12px; color:#666; margin-top:5px;">
                         Remaining: Rp <?php echo number_format($remaining); ?>
                     </div>
+                    
+                    <?php if($pending_payments > 0): ?>
+                        <div style="background:#fff3e0; color:#ef6c00; font-size:12px; padding:10px; border-radius:4px; margin-top:10px; text-align:center;">
+                            <ion-icon name="time-outline" style="vertical-align:middle;"></ion-icon> 
+                            Rp <?php echo number_format($pending_payments); ?> pending verification.
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php if($remaining > 0 && !$is_cancelled): ?>
@@ -337,17 +340,25 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                         Account No: <strong>4685015898</strong>
                     </div>
 
-                    <form method="POST" enctype="multipart/form-data" style="background:#f9f9f9; padding:15px; border-radius:8px;">
-                        
-                        <?php if(!$has_dp): ?>
-                            <div style="margin-bottom:15px;">
-                                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Down Payment (DP) Amount (Rp)</label>
-                                <div style="font-size:11px; color:#666; margin-bottom:8px;">Enter the initial down payment amount you wish to pay.</div>
-                                <input type="number" name="amount" id="selected-total-input" min="1" max="<?php echo $remaining; ?>" required style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc;" oninput="checkManualAmount()">
-                            </div>
-                        <?php else: ?>
+                    <?php if($verified_paid == 0): ?>
+                        <form method="POST" enctype="multipart/form-data" style="background:#f9f9f9; padding:15px; border-radius:8px;">
+                            <h4 style="margin-top:0; color:#333;"><ion-icon name="wallet-outline"></ion-icon> Initial Down Payment</h4>
+                            <p style="font-size:12px; color:#666; margin-bottom:15px;">Please enter your DP amount in Rupiah to begin your installment schedule.</p>
+                            
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Manual DP Amount (Rp)</label>
+                            <input type="number" id="manual-amount-input" name="amount" required min="10000" max="<?php echo $remaining; ?>" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:15px;" placeholder="e.g. 500000" oninput="checkUploadBtn()">
+                            
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Upload Proof of Payment</label>
+                            <input type="file" name="proof" required style="font-size:13px; width:100%; padding:8px; margin-bottom:10px; background:white; border:1px solid #ddd; border-radius:4px;">
+                            
+                            <button type="submit" class="btn btn-sm" id="upload-btn" disabled style="width:100%; background:#007AFF; color:white;">Submit DP & Proof</button>
+                        </form>
+                    <?php else: ?>
+                        <form method="POST" enctype="multipart/form-data" style="background:#f9f9f9; padding:15px; border-radius:8px;">
+                            <h4 style="margin-top:0; color:#333;"><ion-icon name="cash-outline"></ion-icon> Pay Installment</h4>
+                            
                             <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Select Months to Pay</label>
-                            <div style="max-height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                            <div style="max-height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 5px;">
                                 <?php foreach($schedule as $s): ?>
                                     <?php if($s['remaining_amount'] > 0): ?>
                                         <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee;">
@@ -361,15 +372,21 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
                                 <?php endforeach; ?>
                             </div>
 
-                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Or Enter Custom Amount (Rp)</label>
-                            <input type="number" name="amount" id="selected-total-input" value="0" min="1" max="<?php echo $remaining; ?>" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:15px;" oninput="checkManualAmount()">
-                        <?php endif; ?>
+                            <div style="font-size:13px; font-weight:800; text-align:right; margin-bottom:15px; color:#333;">
+                                Selected: Rp <span id="selected-total-display">0</span>
+                            </div>
 
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Upload Proof of Payment</label>
-                        <input type="file" name="proof" required style="font-size:13px; width:100%; padding:8px; margin-bottom:10px; background:white; border:1px solid #ddd; border-radius:4px;">
-                        
-                        <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Pay Now</button>
-                    </form>
+                            <div style="text-align:center; font-size:12px; font-weight:bold; color:#888; margin-bottom:15px;">— OR —</div>
+
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Input Manual Amount (Rp)</label>
+                            <input type="number" id="manual-amount-input" name="amount" min="10000" max="<?php echo $remaining; ?>" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:15px;" placeholder="e.g. 150000" oninput="overrideChecklists()">
+
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Upload Proof of Payment</label>
+                            <input type="file" name="proof" required style="font-size:13px; width:100%; padding:8px; margin-bottom:10px; background:white; border:1px solid #ddd; border-radius:4px;">
+                            
+                            <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Pay Amount</button>
+                        </form>
+                    <?php endif; ?>
                     
                     <?php if($verified_paid == 0): ?>
                         <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');" style="margin-top:15px;">
@@ -430,7 +447,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
 </div>
 
 <script>
-// Calculate from checkboxes and update manual input field
+// Unifies Checklist Checkboxes with Manual Input field
 function calculateTotal() {
     let total = 0;
     const checkboxes = document.querySelectorAll('.month-checkbox');
@@ -439,18 +456,36 @@ function calculateTotal() {
             total += parseFloat(cb.value);
         }
     });
-    document.getElementById('selected-total-input').value = total;
-    checkManualAmount();
+    
+    // Update Display
+    const displayElem = document.getElementById('selected-total-display');
+    if (displayElem) displayElem.innerText = total.toLocaleString('id-ID');
+    
+    // Sync with Manual Input
+    const manualInput = document.getElementById('manual-amount-input');
+    if (manualInput) {
+        manualInput.value = total > 0 ? total : '';
+    }
+    
+    checkUploadBtn();
 }
 
-// Enable/Disable the submit button based on the custom amount input
-function checkManualAmount() {
-    let val = parseFloat(document.getElementById('selected-total-input').value) || 0;
-    document.getElementById('upload-btn').disabled = (val <= 0);
+// Clears Checkboxes when User Types Manually
+function overrideChecklists() {
+    const checkboxes = document.querySelectorAll('.month-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = false;
+    });
+    
+    const displayElem = document.getElementById('selected-total-display');
+    if (displayElem) displayElem.innerText = '0';
+    
+    checkUploadBtn();
 }
 
-// Initial state check
-document.addEventListener("DOMContentLoaded", function() {
-    checkManualAmount();
-});
+function checkUploadBtn() {
+    const manualInput = document.getElementById('manual-amount-input');
+    const total = manualInput ? (parseFloat(manualInput.value) || 0) : 0;
+    document.getElementById('upload-btn').disabled = (total <= 0);
+}
 </script>
