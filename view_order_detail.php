@@ -1,5 +1,5 @@
 <?php
-// view_order_detail.php - 12 MONTH INSTALLMENTS, MONTH SELECTOR & SMART COUNTDOWN
+// view_order_detail.php - 12 MONTH INSTALLMENTS, DP, & MANUAL RUPIAH PAYMENT
 if (!isset($_SESSION['user_id'])) echo "<script>window.location='?page=login';</script>";
 $pdo = getDB();
 $uid = $_SESSION['user_id'];
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     echo "<script>alert('Failed to save uploaded file. Check directory permissions.'); window.location.href='?page=order_detail&id=$oid';</script>";
                 }
             } else {
-                echo "<script>alert('Please input a valid amount to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
+                echo "<script>alert('Please enter a valid amount to pay.'); window.location.href='?page=order_detail&id=$oid';</script>";
             }
         } else {
             $err = $_FILES['proof']['error'];
@@ -89,12 +89,15 @@ $items = $stmtItems->fetchAll();
 // Fetch Payments & Calculate Verified Totals
 $payments = $pdo->query("SELECT * FROM order_payments WHERE order_id = $oid ORDER BY payment_date DESC")->fetchAll();
 $verified_paid = 0; 
+$active_payments = 0; // Check if user has made at least one payment (DP)
 foreach ($payments as $p) {
     if ($p['status'] == 'verified') $verified_paid += $p['amount'];
+    if (in_array($p['status'], ['verified', 'pending'])) $active_payments++;
 }
 $remaining = $order['total_amount'] - $verified_paid;
 if($remaining < 0) $remaining = 0;
 $progress = ($order['total_amount'] > 0) ? ($verified_paid / $order['total_amount']) * 100 : 0;
+$has_dp = $active_payments > 0; // If true, DP is done, show checkboxes + manual
 
 
 // --- 3. WATERFALL 12-MONTH SCHEDULE LOGIC ---
@@ -206,7 +209,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
         <?php $time_left = $next_deadline - $now; ?>
         <div class="card" style="background:<?php echo $time_left > 0 ? '#fff3e0' : '#ffebee'; ?>; border:1px solid <?php echo $time_left > 0 ? '#ffe0b2' : '#ffcdd2'; ?>; text-align:center; padding:15px; margin-bottom:20px;">
             <div style="font-weight:bold; color:<?php echo $time_left > 0 ? '#ef6c00' : '#c62828'; ?>; font-size:16px; margin-bottom:5px;">
-                <ion-icon name="time-outline" style="vertical-align:middle"></ion-icon> Next Payment Deadline
+                <ion-icon name="time-outline" style="vertical-align:middle;"></ion-icon> Next Payment Deadline
             </div>
             <?php if($time_left > 0): ?>
                 <div style="color:#555; font-size:13px; margin-bottom:10px;">
@@ -336,34 +339,36 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
 
                     <form method="POST" enctype="multipart/form-data" style="background:#f9f9f9; padding:15px; border-radius:8px;">
                         
-                        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Select Months or Enter Custom Amount</label>
-                        <div style="max-height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-                            <?php foreach($schedule as $s): ?>
-                                <?php if($s['remaining_amount'] > 0): ?>
-                                    <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee;">
-                                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; width:100%;">
-                                            <input type="checkbox" class="month-checkbox" value="<?php echo $s['remaining_amount']; ?>" onchange="calculateTotal()">
-                                            <span>Month <?php echo $s['month']; ?></span>
-                                            <span style="margin-left:auto; font-weight:bold; color:var(--primary);">Rp <?php echo number_format($s['remaining_amount']); ?></span>
-                                        </label>
-                                    </div>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
+                        <?php if(!$has_dp): ?>
+                            <div style="margin-bottom:15px;">
+                                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Down Payment (DP) Amount (Rp)</label>
+                                <div style="font-size:11px; color:#666; margin-bottom:8px;">Enter the initial down payment amount you wish to pay.</div>
+                                <input type="number" name="amount" id="selected-total-input" min="1" max="<?php echo $remaining; ?>" required style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc;" oninput="checkManualAmount()">
+                            </div>
+                        <?php else: ?>
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Select Months to Pay</label>
+                            <div style="max-height: 180px; overflow-y: auto; background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                                <?php foreach($schedule as $s): ?>
+                                    <?php if($s['remaining_amount'] > 0): ?>
+                                        <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee;">
+                                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; width:100%;">
+                                                <input type="checkbox" class="month-checkbox" value="<?php echo $s['remaining_amount']; ?>" onchange="calculateTotal()">
+                                                <span>Month <?php echo $s['month']; ?></span>
+                                                <span style="margin-left:auto; font-weight:bold; color:var(--primary);">Rp <?php echo number_format($s['remaining_amount']); ?></span>
+                                            </label>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
 
-                        <div style="margin-bottom:15px;">
-                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Manual Input (Rp):</label>
-                            <input type="number" name="amount" id="selected-total-input" value="0" min="1" max="<?php echo $remaining; ?>" oninput="handleManualInput()" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:16px; font-weight:bold; text-align:right;">
-                        </div>
+                            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Or Enter Custom Amount (Rp)</label>
+                            <input type="number" name="amount" id="selected-total-input" value="0" min="1" max="<?php echo $remaining; ?>" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; margin-bottom:15px;" oninput="checkManualAmount()">
+                        <?php endif; ?>
 
-                        <div style="font-size:15px; font-weight:800; text-align:right; margin-bottom:15px; color:#333;">
-                            Total to Pay: Rp <span id="selected-total-display">0</span>
-                        </div>
-                        
                         <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Upload Proof of Payment</label>
                         <input type="file" name="proof" required style="font-size:13px; width:100%; padding:8px; margin-bottom:10px; background:white; border:1px solid #ddd; border-radius:4px;">
                         
-                        <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Submit Payment</button>
+                        <button type="submit" class="btn btn-sm" style="width:100%;" id="upload-btn" disabled>Pay Now</button>
                     </form>
                     
                     <?php if($verified_paid == 0): ?>
@@ -425,7 +430,7 @@ $est_arrival = $snapshot['est_arrival'] ?? date('Y-m-d', strtotime('+3 days'));
 </div>
 
 <script>
-// Logic to calculate dynamically from checkboxes
+// Calculate from checkboxes and update manual input field
 function calculateTotal() {
     let total = 0;
     const checkboxes = document.querySelectorAll('.month-checkbox');
@@ -434,30 +439,18 @@ function calculateTotal() {
             total += parseFloat(cb.value);
         }
     });
-    
-    // Auto-fill manual input and display
-    document.getElementById('selected-total-input').value = total || "";
-    document.getElementById('selected-total-display').innerText = total.toLocaleString('id-ID');
-    
-    // Disable button if nothing is selected
-    document.getElementById('upload-btn').disabled = (total <= 0);
+    document.getElementById('selected-total-input').value = total;
+    checkManualAmount();
 }
 
-// Logic to override if user types custom amount directly
-function handleManualInput() {
-    let inputField = document.getElementById('selected-total-input');
-    let val = parseFloat(inputField.value) || 0;
-    
-    // Update display formatting
-    document.getElementById('selected-total-display').innerText = val.toLocaleString('id-ID');
-    
-    // Uncheck boxes to reflect that manual input is taking over
-    const checkboxes = document.querySelectorAll('.month-checkbox');
-    checkboxes.forEach(function(cb) {
-        cb.checked = false;
-    });
-    
-    // Enable/Disable button
+// Enable/Disable the submit button based on the custom amount input
+function checkManualAmount() {
+    let val = parseFloat(document.getElementById('selected-total-input').value) || 0;
     document.getElementById('upload-btn').disabled = (val <= 0);
 }
+
+// Initial state check
+document.addEventListener("DOMContentLoaded", function() {
+    checkManualAmount();
+});
 </script>
