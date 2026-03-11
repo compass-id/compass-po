@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.2
+-- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1:3306
--- Generation Time: Mar 03, 2026 at 05:15 PM
--- Server version: 11.8.3-MariaDB-log
--- PHP Version: 7.2.34
+-- Host: localhost
+-- Generation Time: Mar 10, 2026 at 10:52 PM
+-- Server version: 8.0.30
+-- PHP Version: 8.5.2
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,16 +28,16 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `books` (
-  `id` int(11) NOT NULL,
-  `title` text NOT NULL,
-  `isbn` text NOT NULL,
-  `category` text NOT NULL,
-  `cefr` text NOT NULL,
-  `cover_image` text NOT NULL,
-  `base_price` text NOT NULL,
-  `stock` text NOT NULL,
-  `is_featured` text NOT NULL,
-  `early_bird_price` decimal(10,2) DEFAULT 0.00,
+  `id` int NOT NULL,
+  `title` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `isbn` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cefr` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cover_image` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `base_price` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stock` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_featured` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `early_bird_price` decimal(10,2) DEFAULT '0.00',
   `early_bird_end_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -629,7 +629,7 @@ INSERT INTO `books` (`id`, `title`, `isbn`, `category`, `cefr`, `cover_image`, `
 --
 
 CREATE TABLE `interest_forms` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `school_name` varchar(150) DEFAULT NULL,
   `participant_name` varchar(100) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
@@ -637,12 +637,12 @@ CREATE TABLE `interest_forms` (
   `city` varchar(100) DEFAULT NULL,
   `contact` varchar(100) DEFAULT NULL,
   `position` varchar(100) DEFAULT NULL,
-  `student_count` int(11) DEFAULT NULL,
-  `programs` text DEFAULT NULL,
+  `student_count` int DEFAULT NULL,
+  `programs` text,
   `visit_consent` varchar(20) DEFAULT NULL,
   `interest_level` varchar(100) DEFAULT NULL,
   `status` enum('new','contacted') DEFAULT 'new',
-  `created_at` timestamp NULL DEFAULT current_timestamp()
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -665,26 +665,26 @@ INSERT INTO `interest_forms` (`id`, `school_name`, `participant_name`, `email`, 
 --
 
 CREATE TABLE `orders` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `reference_id` varchar(20) DEFAULT NULL,
-  `user_id` int(11) DEFAULT NULL,
+  `user_id` int DEFAULT NULL,
   `shipping_city` varchar(100) DEFAULT NULL,
-  `shipping_snapshot` text DEFAULT NULL,
+  `shipping_snapshot` text,
   `status` varchar(50) DEFAULT NULL,
-  `payment_status` text DEFAULT NULL,
-  `tier_level` int(11) DEFAULT 1,
-  `is_early_bird` tinyint(1) DEFAULT 0,
+  `payment_status` text,
+  `tier_level` int DEFAULT '1',
+  `is_early_bird` tinyint(1) DEFAULT '0',
   `total_amount` decimal(15,2) DEFAULT NULL,
-  `paid_amount` decimal(15,2) DEFAULT 0.00,
+  `paid_amount` decimal(15,2) DEFAULT '0.00',
   `payment_proof` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `shipping_status` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `shipping_status` text,
   `tracking_number` varchar(100) DEFAULT NULL,
   `estimated_delivery` date DEFAULT NULL,
   `confirmed_arrival` datetime DEFAULT NULL,
   `arrival_proof` varchar(255) DEFAULT NULL,
   `arrival_date` datetime DEFAULT NULL,
-  `shipment_status` text DEFAULT NULL,
+  `shipment_status` text,
   `next_payment_due` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -698,7 +698,9 @@ INSERT INTO `orders` (`id`, `reference_id`, `user_id`, `shipping_city`, `shippin
 (3, 'ORD-2026-000003', 2, 'Jakarta Selatan', '{\"est_arrival\": \"2026-02-13\"}', 'rejected', 'unpaid', 2, 1, 2700000.00, 0.00, NULL, '2026-01-29 11:58:58', 'cancelled', NULL, NULL, NULL, NULL, NULL, 'processing', NULL),
 (4, 'ORD-2026-000004', 5, 'Jakarta Selatan', '{\"est_arrival\": \"2026-02-13\"}', 'confirmed', 'partial', 3, 1, 22500000.00, 400000.00, 'proof_4_1770553604.jpeg', '2026-02-08 12:23:34', 'delivering', NULL, '2026-02-10', NULL, NULL, NULL, 'packing', NULL),
 (5, 'ORD-2026-000005', 1, 'Jakarta Selatan', '{\"id\": 1, \"user_id\": 1, \"label\": \"Main Address\", \"recipient_name\": \"Admin\", \"phone\": \"08123456789\", \"address_line\": \"Headquarters\", \"city\": \"Jakarta Selatan\", \"postal_code\": null, \"is_default\": 1, \"created_at\": \"2026-02-08 20:31:39\", \"est_arrival\": \"2026-02-13\"}', 'cancelled', 'unpaid', 1, 1, 285000.00, 0.00, NULL, '2026-02-08 14:18:17', 'cancelled', NULL, NULL, NULL, NULL, NULL, 'processing', NULL),
-(12, NULL, 1, 'Sukabumi', '{\"id\":6,\"user_id\":1,\"label\":\"SMK Islam Penguji\",\"recipient\":\"Unknown\",\"recipient_name\":\"Aldi Alfiandi\",\"phone\":\"085174448002\",\"address_line\":\"Jl. Pelabuhan II, Gg. Nakula No. 76\\nRT. 002\\/RW. 001, Kel. Tipar, Kec. Citamiang\",\"city\":\"Sukabumi\",\"postal_code\":\"43141\",\"is_default\":1,\"created_at\":\"2026-02-08 14:31:36\"}', 'confirmed', 'partial', 1, 0, 107730000.00, 100000.00, NULL, '2026-02-12 22:22:08', 'processing', NULL, NULL, NULL, NULL, NULL, 'processing', NULL);
+(12, NULL, 1, 'Sukabumi', '{\"id\": 6, \"city\": \"Sukabumi\", \"label\": \"SMK Islam Penguji\", \"phone\": \"085174448002\", \"user_id\": 1, \"recipient\": \"Unknown\", \"created_at\": \"2026-02-08 14:31:36\", \"is_default\": 1, \"est_arrival\": \"2026-03-06\", \"postal_code\": \"43141\", \"address_line\": \"Jl. Pelabuhan II, Gg. Nakula No. 76\\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang\", \"recipient_name\": \"Aldi Alfiandi\"}', 'confirmed', 'partial', 1, 0, 107730000.00, 100000.00, NULL, '2026-02-12 22:22:08', 'delivering', NULL, NULL, NULL, NULL, NULL, 'processing', NULL),
+(13, NULL, 6, 'Sukabumi', '{\"id\": 7, \"city\": \"Sukabumi\", \"label\": \"PT SEG\", \"phone\": \"085174448002\", \"user_id\": 6, \"recipient\": \"Aldi Alfiandi\", \"created_at\": \"2026-03-04 00:20:08\", \"is_default\": 0, \"est_arrival\": \"2026-03-06\", \"postal_code\": \"43141\", \"address_line\": \"Jl. Pelabuhan II, Gg. Nakula No. 76\\r\\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang\", \"recipient_name\": null}', 'confirmed', 'partial', 1, 0, 4155300.00, 692550.00, NULL, '2026-03-03 17:20:39', 'delivering', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, NULL, 7, 'Sukabumi', '{\"id\": 8, \"city\": \"Sukabumi\", \"label\": \"PT SEG\", \"phone\": \"085174448002\", \"user_id\": 7, \"recipient\": \"Aldi Alfiandi\", \"created_at\": \"2026-03-04 03:33:22\", \"is_default\": 0, \"est_arrival\": \"2026-03-06\", \"postal_code\": \"43141\", \"address_line\": \"Jl. Pelabuhan II, Gg. Nakula No. 76\\r\\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang\", \"recipient_name\": null}', 'confirmed', 'partial', 1, 0, 2770200.00, 230850.00, NULL, '2026-03-03 20:33:36', 'shipping', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -707,10 +709,10 @@ INSERT INTO `orders` (`id`, `reference_id`, `user_id`, `shipping_city`, `shippin
 --
 
 CREATE TABLE `order_items` (
-  `id` int(11) NOT NULL,
-  `order_id` int(11) DEFAULT NULL,
-  `book_id` int(11) DEFAULT NULL,
-  `quantity` int(11) DEFAULT NULL,
+  `id` int NOT NULL,
+  `order_id` int DEFAULT NULL,
+  `book_id` int DEFAULT NULL,
+  `quantity` int DEFAULT NULL,
   `unit_price` decimal(10,2) DEFAULT NULL,
   `total_price` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -740,7 +742,12 @@ INSERT INTO `order_items` (`id`, `order_id`, `book_id`, `quantity`, `unit_price`
 (18, 11, 7, 10, 142500.00, 1425000.00),
 (19, 11, 0, 2, 37800.00, 75600.00),
 (20, 12, 23, 500, 153900.00, 76950000.00),
-(21, 12, 24, 500, 153900.00, 76950000.00);
+(21, 12, 24, 500, 153900.00, 76950000.00),
+(22, 13, 23, 10, 153900.00, 1539000.00),
+(23, 13, 24, 10, 153900.00, 1539000.00),
+(24, 13, 25, 10, 153900.00, 1539000.00),
+(25, 14, 23, 10, 153900.00, 1539000.00),
+(26, 14, 24, 10, 153900.00, 1539000.00);
 
 -- --------------------------------------------------------
 
@@ -749,13 +756,13 @@ INSERT INTO `order_items` (`id`, `order_id`, `book_id`, `quantity`, `unit_price`
 --
 
 CREATE TABLE `order_payments` (
-  `id` int(11) NOT NULL,
-  `order_id` int(11) NOT NULL,
+  `id` int NOT NULL,
+  `order_id` int NOT NULL,
   `amount` decimal(15,2) NOT NULL,
   `proof_image` varchar(255) NOT NULL,
   `status` enum('pending','verified','rejected') DEFAULT 'pending',
-  `payment_date` timestamp NULL DEFAULT current_timestamp(),
-  `admin_note` text DEFAULT NULL
+  `payment_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `admin_note` text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -767,7 +774,11 @@ INSERT INTO `order_payments` (`id`, `order_id`, `amount`, `proof_image`, `status
 (573, 8, 285000.00, 'proof_8_1770594650.jpg', 'verified', '2026-02-08 23:50:50', NULL),
 (574, 9, 125000.00, 'proof_9_1770596213.jpg', 'verified', '2026-02-09 00:16:53', NULL),
 (575, 11, 1500600.00, 'proof_11_1770929983.jpg', 'verified', '2026-02-12 20:59:43', NULL),
-(576, 12, 100000.00, 'proof_12_1770935084.jpg', 'verified', '2026-02-12 22:24:44', NULL);
+(576, 12, 100000.00, 'proof_12_1770935084.jpg', 'verified', '2026-02-12 22:24:44', NULL),
+(577, 13, 55300.00, 'proof_13_1772559329.jpg', 'verified', '2026-03-03 17:35:29', NULL),
+(578, 13, 346275.00, 'proof_13_1772560094.jpg', 'verified', '2026-03-03 17:48:14', NULL),
+(579, 13, 290975.00, 'proof_13_1772560825.jpg', 'verified', '2026-03-03 18:00:25', NULL),
+(580, 14, 230850.00, 'proof_14_1772570098.jpg', 'verified', '2026-03-03 20:34:58', NULL);
 
 -- --------------------------------------------------------
 
@@ -801,14 +812,14 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
 --
 
 CREATE TABLE `tickets` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
   `subject` varchar(255) NOT NULL,
   `message` text NOT NULL,
   `status` enum('open','closed') DEFAULT 'open',
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `ai_reply` text DEFAULT NULL,
-  `admin_reply` text DEFAULT NULL
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `ai_reply` text,
+  `admin_reply` text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -827,9 +838,9 @@ INSERT INTO `tickets` (`id`, `user_id`, `subject`, `message`, `status`, `created
 --
 
 CREATE TABLE `tier_rules` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `name` varchar(50) NOT NULL,
-  `min_qty` int(11) NOT NULL,
+  `min_qty` int NOT NULL,
   `discount_percent` decimal(5,2) NOT NULL,
   `color` varchar(20) DEFAULT 'gray'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -851,14 +862,14 @@ INSERT INTO `tier_rules` (`id`, `name`, `min_qty`, `discount_percent`, `color`) 
 --
 
 CREATE TABLE `transactions` (
-  `id` int(11) NOT NULL,
-  `order_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `id` int NOT NULL,
+  `order_id` int NOT NULL,
+  `user_id` int NOT NULL,
   `amount` decimal(15,2) NOT NULL,
   `proof_image` varchar(255) DEFAULT NULL,
   `status` enum('pending','verified','rejected') DEFAULT 'pending',
   `admin_note` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `note` varchar(100) DEFAULT 'Installment'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -877,7 +888,7 @@ INSERT INTO `transactions` (`id`, `order_id`, `user_id`, `amount`, `proof_image`
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -886,21 +897,24 @@ CREATE TABLE `users` (
   `institution` varchar(150) DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `address` text DEFAULT NULL,
-  `is_banned` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT current_timestamp()
+  `address` text,
+  `is_banned` tinyint(1) DEFAULT '0',
+  `is_approved` tinyint(1) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `position`, `institution`, `city`, `phone`, `address`, `is_banned`, `created_at`) VALUES
-(1, 'Admin', 'admin@compass.com', '$2y$12$z2epecELzAsm.Qg2grFF6u4ocEqsyDxR66Nl0fcTIRzwUGScPUEdG', 'admin', 'Staff', 'PT SEG', NULL, '08123456789', 'Headquarters', 0, '2026-02-08 11:58:58'),
-(2, 'Budi Santoso', 'budi@school.id', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'school', NULL, NULL, NULL, '08129999888', 'SMA Negeri 1 Jakarta', 0, '2026-02-08 11:58:58'),
-(3, 'Siti Aminah', 'siti@gmail.com', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'public', NULL, NULL, NULL, '08127777666', 'Private Tutor, Bandung', 0, '2026-02-08 11:58:58'),
-(4, 'John Doe', 'john@intl.sch.id', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'school', NULL, NULL, NULL, '08125555444', 'Inter School Surabaya', 0, '2026-02-08 11:58:58'),
-(5, 'Abu Bakar', 'bakar@ceg.com', '$2y$12$z2epecELzAsm.Qg2grFF6u4ocEqsyDxR66Nl0fcTIRzwUGScPUEdG', 'public', NULL, NULL, NULL, NULL, 'No address on file', 0, '2026-02-08 12:10:22');
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `position`, `institution`, `city`, `phone`, `address`, `is_banned`, `is_approved`, `created_at`) VALUES
+(1, 'Admin', 'admin@compass.com', '$2y$12$z2epecELzAsm.Qg2grFF6u4ocEqsyDxR66Nl0fcTIRzwUGScPUEdG', 'admin', 'Staff', 'PT SEG', NULL, '08123456789', 'Headquarters', 0, 1, '2026-02-08 11:58:58'),
+(2, 'Budi Santoso', 'budi@school.id', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'school', NULL, NULL, NULL, '08129999888', 'SMA Negeri 1 Jakarta', 0, 1, '2026-02-08 11:58:58'),
+(3, 'Siti Aminah', 'siti@gmail.com', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'public', NULL, NULL, NULL, '08127777666', 'Private Tutor, Bandung', 0, 1, '2026-02-08 11:58:58'),
+(4, 'John Doe', 'john@intl.sch.id', '$2y$12$ZrhfeA4XikDqGOSUNxC6H.gyL4KUOUM4Qe4hM4yiYwP1VwlIb2aNa', 'school', NULL, NULL, NULL, '08125555444', 'Inter School Surabaya', 0, 1, '2026-02-08 11:58:58'),
+(5, 'Abu Bakar', 'bakar@ceg.com', '$2y$12$z2epecELzAsm.Qg2grFF6u4ocEqsyDxR66Nl0fcTIRzwUGScPUEdG', 'public', NULL, NULL, NULL, NULL, 'No address on file', 0, 1, '2026-02-08 12:10:22'),
+(6, 'Aldi Alfiandi', 'aldialfiandi2708@gmail.com', '$2y$12$JOT8aR9pvc5IV6QClr3ySeviSgIEJt9xEhnooUoF8HufsikfnkdgS', 'public', 'Staff', 'PT SEG', 'Sukabumi', NULL, NULL, 0, 1, '2026-03-03 17:19:11'),
+(7, 'Aldi Alfiandi', 'aldyalfiandi2708@gmail.com', '$2y$12$B0C.OwZqyO7waEaMk.2XluQMA4WSJZ0ldRgVkg5I20qOn7F78QLMG', 'public', 'Staff', 'PT SEG', 'Sukabumi', '085174448002', NULL, 0, 1, '2026-03-03 19:29:19');
 
 -- --------------------------------------------------------
 
@@ -909,17 +923,17 @@ INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `position`, `ins
 --
 
 CREATE TABLE `user_addresses` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
   `label` varchar(50) DEFAULT 'School',
   `recipient` varchar(100) DEFAULT '',
   `recipient_name` varchar(100) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `address_line` text DEFAULT NULL,
+  `address_line` text,
   `city` varchar(100) DEFAULT NULL,
   `postal_code` varchar(10) DEFAULT NULL,
-  `is_default` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NULL DEFAULT current_timestamp()
+  `is_default` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -930,7 +944,9 @@ INSERT INTO `user_addresses` (`id`, `user_id`, `label`, `recipient`, `recipient_
 (2, 2, 'Main Address', 'Unknown', 'Budi Santoso', '08129999888', 'SMA Negeri 1 Jakarta', 'Jakarta Selatan', NULL, 1, '2026-02-08 13:31:39'),
 (3, 3, 'Main Address', 'Unknown', 'Siti Aminah', '08127777666', 'Private Tutor, Bandung', 'Jakarta Selatan', NULL, 1, '2026-02-08 13:31:39'),
 (4, 4, 'Main Address', 'Unknown', 'John Doe', '08125555444', 'Inter School Surabaya', 'Jakarta Selatan', NULL, 1, '2026-02-08 13:31:39'),
-(6, 1, 'SMK Islam Penguji', 'Unknown', 'Aldi Alfiandi', '085174448002', 'Jl. Pelabuhan II, Gg. Nakula No. 76\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang', 'Sukabumi', '43141', 1, '2026-02-08 14:31:36');
+(6, 1, 'SMK Islam Penguji', 'Unknown', 'Aldi Alfiandi', '085174448002', 'Jl. Pelabuhan II, Gg. Nakula No. 76\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang', 'Sukabumi', '43141', 1, '2026-02-08 14:31:36'),
+(7, 6, 'PT SEG', 'Aldi Alfiandi', NULL, '085174448002', 'Jl. Pelabuhan II, Gg. Nakula No. 76\r\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang', 'Sukabumi', '43141', 0, '2026-03-03 17:20:08'),
+(8, 7, 'PT SEG', 'Aldi Alfiandi', NULL, '085174448002', 'Jl. Pelabuhan II, Gg. Nakula No. 76\r\nRT. 002/RW. 001, Kel. Tipar, Kec. Citamiang', 'Sukabumi', '43141', 0, '2026-03-03 20:33:22');
 
 --
 -- Indexes for dumped tables
@@ -1013,61 +1029,61 @@ ALTER TABLE `user_addresses`
 -- AUTO_INCREMENT for table `books`
 --
 ALTER TABLE `books`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=574;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=574;
 
 --
 -- AUTO_INCREMENT for table `interest_forms`
 --
 ALTER TABLE `interest_forms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `order_payments`
 --
 ALTER TABLE `order_payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=577;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=581;
 
 --
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `tier_rules`
 --
 ALTER TABLE `tier_rules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `user_addresses`
 --
 ALTER TABLE `user_addresses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables
