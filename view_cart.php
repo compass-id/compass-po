@@ -402,6 +402,13 @@ if ($next_tier) {
                 <span>Rp <?php echo number_format($net_total); ?></span>
             </div>
 
+            <div style="background:#f0f9ff; border:1px solid #bce8f1; color:#31708f; padding:15px; border-radius:8px; font-size:13px; margin-bottom:20px; text-align:center;">
+                <ion-icon name="card-outline" style="font-size: 18px; vertical-align: middle; margin-right: 5px;"></ion-icon>
+                <strong>Payment Method: Bank Transfer - BCA</strong><br>
+                PT Solusi Edukasi Gemilang<br>
+                Account No: <strong>4685015898</strong>
+            </div>
+
             <?php if ($total_qty < $MOQ): ?>
                 <div style="background:#fff3e0; border:1px solid #ffe0b2; color:#e65100; padding:15px; border-radius:8px; font-size:13px; margin-bottom:20px; text-align:center;">
                     ⚠️ <strong>Minimum Order Not Met</strong><br>
